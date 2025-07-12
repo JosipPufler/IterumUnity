@@ -17,7 +17,7 @@ namespace Iterum.utils
             return listOfRolls;
         }
 
-        public static int Roll(Dice die, RollType rollType) {
+        public static int Roll(Dice die, RollType rollType = RollType.Normal) {
             int roll = random.Next(0, (int)die + 1);
             
             switch (rollType)

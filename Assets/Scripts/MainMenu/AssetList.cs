@@ -2,6 +2,7 @@
 using System.IO;
 using Assets.Scripts.Utils.Managers;
 using Iterum.Scripts.Utils;
+using SFB;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEditor;
@@ -26,7 +27,7 @@ namespace Assets.Scripts.MainMenu
         public TMP_InputField imageName;
         public Button uploadButton;
 
-        private Dictionary<string, GameObject> entries = new Dictionary<string, GameObject>();
+        private Dictionary<string, GameObject> entries = new();
 
         void Start()
         {
@@ -50,10 +51,13 @@ namespace Assets.Scripts.MainMenu
 
         public void OpenFileDialogAndUpload()
         {
-            string path = EditorUtility.OpenFilePanel("Select an Image", "", "png,jpg,jpeg");
-            if (!string.IsNullOrEmpty(path))
+            string[] paths = StandaloneFileBrowser.OpenFilePanel("Select an Image", "", new[] {
+                new ExtensionFilter("Image Files", "png", "jpg", "jpeg")
+            }, false);
+
+            if (paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
             {
-                AssetManager.Instance.UploadImage(path, ReloadAssets, error => Debug.Log(error));
+                AssetManager.Instance.UploadImage(paths[0], ReloadAssets, error => Debug.Log(error));
             }
         }
 

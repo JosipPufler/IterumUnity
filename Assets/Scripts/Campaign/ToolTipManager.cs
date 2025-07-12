@@ -22,14 +22,12 @@ public class ToolTipManager : MonoBehaviour
     private ToolTipTrigger currentHover;
     private float lastHitTime;
     private RectTransform panelRect;
-    private Camera cam;
 
     public CameraController cameraController;
     private bool isUIOverride = false;
     void Awake()
     {
         Instance = this;
-        cam = uiCanvas.worldCamera;
         panelRect = tooltipPanel.GetComponent<RectTransform>();
         tooltipPanel.SetActive(false);
     }
@@ -109,18 +107,16 @@ public class ToolTipManager : MonoBehaviour
     private void PositionTooltip()
     {
         Vector2 mousePos = Input.mousePosition + (Vector3)offset;
-
         Vector2 panelSize = panelRect.sizeDelta;
-        Vector2 clampedPos = mousePos;
 
-        float canvasScale = uiCanvas.scaleFactor;
         Vector2 screenSize = new(Screen.width, Screen.height);
+        float scale = uiCanvas.scaleFactor;
 
-        clampedPos.x = Mathf.Clamp(clampedPos.x, 0, screenSize.x - panelSize.x * canvasScale);
-        clampedPos.y = Mathf.Clamp(clampedPos.y, panelSize.y * canvasScale, screenSize.y);
+        Vector2 clampedPos = mousePos;
+        clampedPos.x = Mathf.Clamp(clampedPos.x, 0, screenSize.x - panelSize.x * scale);
+        clampedPos.y = Mathf.Clamp(clampedPos.y, panelSize.y * scale, screenSize.y);
 
-        Vector3 worldPos = cam.ScreenToWorldPoint(new Vector3(clampedPos.x, clampedPos.y, uiCanvas.planeDistance));
-        panelRect.position = worldPos;
+        panelRect.position = clampedPos;
     }
 
     public void Hide()

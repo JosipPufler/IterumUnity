@@ -14,16 +14,14 @@ namespace Assets.Scripts.Map
         public float height = 50f;
         public bool isFlatTopped = true;
         public Material hexMaterial;
+        public Material highlightMaterial;
 
-        protected Dictionary<Vector3Int, GameObject> grid = new Dictionary<Vector3Int, GameObject>();
-        protected Vector2Int[] axialDirs = {
-          new Vector2Int(+1,  0),  // right
-          new Vector2Int(+1, -1),  // up‑right
-          new Vector2Int( 0, -1),  // up‑left
-          new Vector2Int(-1,  0),  // left
-          new Vector2Int(-1, +1),  // down‑left
-          new Vector2Int( 0, +1),  // down‑right
+        protected static readonly Dictionary<Vector3Int, GameObject> grid = new();
+        protected static readonly Vector2Int[] axialDirs = {
+            new(+1,  0), new(+1, -1), new( 0, -1),
+            new(-1,  0), new(-1, +1), new( 0, +1)
         };
+
 
         protected virtual void TryAddHex(Vector3Int key)
         {
@@ -39,7 +37,7 @@ namespace Assets.Scripts.Map
                 tile.tag = "Hex";
 
                 HexRenderer r = tile.GetComponent<HexRenderer>();
-                r.Initialize(hexMaterial, 0, innerSize, height * 2, isFlatTopped, key.y * height * 2);
+                r.Initialize(hexMaterial, highlightMaterial, 0, innerSize, height * 2, isFlatTopped, key.y * height * 2);
 
                 tile.transform.SetParent(transform, true);
                 grid[key] = tile;
@@ -91,6 +89,37 @@ namespace Assets.Scripts.Map
             }
 
             return new Vector3(xPosition, 0, -yPosition);
+        }
+
+        private Vector2Int OffsetToAxial(Vector2Int offset)
+        {
+            int q, r;
+
+            if (isFlatTopped)
+            {
+                q = offset.x;
+                r = offset.y - (offset.x >> 1);
+            }
+            else
+            {
+                q = offset.x - (offset.y >> 1);
+                r = offset.y;
+            }
+            return new Vector2Int(q, r);
+        }
+
+        public bool AreAdjacent(Vector3Int a, Vector3Int b)
+        {
+            if (Mathf.Abs(a.y - b.y) > 1) return false;
+
+            Vector2Int axialA = OffsetToAxial(new Vector2Int(a.x, a.z));
+            Vector2Int axialB = OffsetToAxial(new Vector2Int(b.x, b.z));
+            Vector2Int delta = axialB - axialA;
+
+            foreach (var dir in axialDirs)
+                if (delta == dir) return true;
+
+            return false;
         }
 
         public Vector2Int WorldToHex(Vector3 worldPos)

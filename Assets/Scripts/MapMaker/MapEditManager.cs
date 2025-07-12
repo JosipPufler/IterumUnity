@@ -27,7 +27,7 @@ namespace Assets.Scripts.Map
                 LayoutGrid();
             });
 
-            ifX.onValueChanged.AddListener(x =>
+            ifX.onEndEdit.AddListener(x =>
             {
                 if (!int.TryParse(x, out int result) || result <= 0)
                 {
@@ -39,7 +39,7 @@ namespace Assets.Scripts.Map
                 LayoutGrid();
             });
 
-            ifY.onValueChanged.AddListener(y =>
+            ifY.onEndEdit.AddListener(y =>
             {
                 if (!int.TryParse(y, out int result) || result <= 0)
                 {

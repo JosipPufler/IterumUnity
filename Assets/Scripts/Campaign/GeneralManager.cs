@@ -5,11 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.UI;
 using Assets.Scripts.Utils;
-using Iterum.models.creatures;
-using Assets.Scripts.GameLogic.models.creatures;
-using Iterum.Scripts.UI;
-using System;
-using TMPro;
+using Assets.Scripts.Campaign;
 
 public class GeneralManager : MonoBehaviour
 {
@@ -17,56 +13,59 @@ public class GeneralManager : MonoBehaviour
     public ScrollViewAutoCenter initiativeBar;
     public CampaignGridLayout layoutManager;
     public CampaignMenuManager menuManager;
+    public CameraController cameraController;
 
     [Header("Prefabs")]
     public GameObject initiativePortraitPrefab;
 
-    [Header("Combat host tab")]
-    public Button btnStartCombat;
-    public GameObject creatureEntryPrefab;
-    public GameObject content;
-    public CampaignMenuManager actionManager;
+    [Header("Controls")]
+    public Button btnEndTurn;
 
     private GameObject initiativeBarContent;
     private readonly Random rng = new();
 
-    List<(int priority, ICreature creature)> initiativeOrder = new();
-    readonly List<(GameObject portrait, ICreature creature)> portraitOrder = new();
-    private readonly List<Type> creatures = new() { typeof(Wolf), typeof(AlphaWolf)};
+    public List<(int priority, CharacterToken token)> initiativeOrder = new();
+    readonly List<(GameObject portrait, CharacterToken token)> portraitOrder = new();
 
-    private bool InCombat = false;
+    public bool InCombat = false;
 
     private void Start()
     {
-        initiativeBarContent = initiativeBar.content.gameObject;
-        foreach (var creature in creatures) {
-            var entry = Instantiate(creatureEntryPrefab, content.transform);
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = StaticUtils.GetDisplayName(creature);
-            entry.GetComponent<Button>().onClick.AddListener(() => {
-                if (GameManager.Instance.SelectedCreature == creature)
-                {
-                    GameManager.Instance.SelectedCreature = null;
-                }
-                else 
-                {
-                    GameManager.Instance.SelectedCreature = creature;
-                }
-            });
-        }
+        btnEndTurn.onClick.AddListener(EndTurn);
 
-        btnStartCombat.onClick.AddListener(StartCombat);
+        initiativeBarContent = initiativeBar.content.gameObject;
     }
 
-    public void StartCombat() {
+    private void Update()
+    {
+        for (int i = initiativeOrder.Count-1; i >= 0; i--)
+        {
+            if (initiativeOrder.ElementAt(i).token.creature.IsDead)
+            {
+                initiativeOrder.RemoveAt(i);
+                Destroy(portraitOrder.ElementAt(i).portrait);
+                portraitOrder.RemoveAt(i);
+                if (i == 0)
+                {
+                    HighlightFirst();
+                }
+            }
+        }
+    }
+
+    public void StartCombatTurn(bool first)
+    {
         InCombat = true;
         foreach (Transform child in initiativeBarContent.transform)
         {
             Destroy(child.gameObject);
         }
 
-        foreach (ICreature character in layoutManager.GetCombatants())
+        foreach (CharacterToken token in layoutManager.GetCombatants())
         {
-            initiativeOrder.Add((character.RollInitiative(), character));
+            initiativeOrder.Add((token.creature.RollInitiative(), token));
+            if (first)
+                token.creature.CurrentAp = token.creature.MaxAp;
         }
 
         initiativeOrder = initiativeOrder
@@ -75,23 +74,36 @@ public class GeneralManager : MonoBehaviour
             .SelectMany(g => g.OrderBy(_ => rng.Next()))
             .ToList();
 
-        foreach (var (priority, creature) in initiativeOrder)
+        foreach (var (priority, token) in initiativeOrder)
         {
-            portraitOrder.Add((CreatePortrait(creature), creature));
+            portraitOrder.Add((CreatePortrait(token), token));
         }
 
-        (GameObject portrait, ICreature creature) value = portraitOrder.ElementAt(0);
-        value.portrait.GetComponent<Outline>().effectColor = Color.white;
-        initiativeBar.UpdateScroll();
-        menuManager.SetCreature(value.creature);
-        actionManager.SetCreature(value.creature);
+        HighlightFirst();
     }
 
-    private GameObject CreatePortrait(ICreature creature)
+    private void HighlightFirst()
     {
+        if (portraitOrder.Count == 0)
+        {
+            return;
+        }
+
+        (GameObject portrait, CharacterToken token) value = portraitOrder.ElementAt(0);
+        value.portrait.GetComponent<Outline>().effectColor = Color.white;
+        initiativeBar.UpdateScroll();
+        menuManager.SetCreature(value.token.creature);
+        value.token.creature.StartTurn();
+    }
+
+    private GameObject CreatePortrait(CharacterToken token)
+    {
+        ICreature creature = token.creature;
         var entry = Instantiate(initiativePortraitPrefab, initiativeBarContent.transform);
 
         entry.transform.Find("CharPortrait").GetComponent<RawImage>().texture = TextureMemorizer.textures[creature.ImagePath];
+        entry.GetComponent<CharacterPortrait>().CharacterToken = token;
+        entry.GetComponent<CharacterPortrait>().CameraRig = cameraController;
 
         Outline outline = entry.GetComponent<Outline>();
 
@@ -116,14 +128,14 @@ public class GeneralManager : MonoBehaviour
         return entry;
     }
 
-    public void UpdateInitiative(ICreature creature) {
+    public void UpdateInitiative(CharacterToken token) {
         if (!InCombat)
         {
             return;
         }
 
-        int roll = creature.RollInitiative();
-        var entry = (roll, creature);
+        int roll = token.creature.RollInitiative();
+        var entry = (roll, token);
 
         int insertIndex = initiativeOrder.Count;
 
@@ -141,7 +153,7 @@ public class GeneralManager : MonoBehaviour
         }
 
         initiativeOrder.Insert(insertIndex, entry);
-        portraitOrder.Insert(insertIndex, (CreatePortrait(creature), creature));
+        portraitOrder.Insert(insertIndex, (CreatePortrait(token), token));
     }
 
     public void EndTurn() {
@@ -149,9 +161,19 @@ public class GeneralManager : MonoBehaviour
         {
             return;
         }
+        initiativeOrder.ElementAt(0).token.creature.EndTurn();
         initiativeOrder.RemoveAt(0);
         Destroy(portraitOrder.ElementAt(0).portrait);
         portraitOrder.RemoveAt(0);
         initiativeBar.UpdateScroll();
+
+        if (initiativeOrder.Count == 0)
+        {
+            StartCombatTurn(false);
+        }
+        else
+        {
+            HighlightFirst();
+        }
     }
 }

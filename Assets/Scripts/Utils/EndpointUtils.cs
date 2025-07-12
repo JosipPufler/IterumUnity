@@ -29,5 +29,10 @@ namespace Iterum.Scripts.Utils
         public static readonly string CreateMap = $"{Maps}/save";
         public static readonly string UpdateMap = $"{Maps}/update";
         public static string DeleteMap(string mapId) => $"{Maps}/delete/{mapId}";
+
+        public static readonly string Characters = $"{Base}/characters";
+        public static readonly string CreateCharacter = $"{Characters}/save";
+        public static readonly string UpdateCharacter = $"{Characters}/update";
+        public static string DeleteCharacter(string mapId) => $"{Characters}/delete/{mapId}";
     }
 }

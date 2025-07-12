@@ -13,24 +13,43 @@ namespace Iterum.models.enums
         WalkingSpeed,
         FlySpeed,
         ClimbSpeed,
+        Reach,
 
-        Perception,
-        Persuasion,
-        Deception,
-        Nature,
-        Religion,
-        History,
-        StreetSmarts,
-        Arcana,
-        Medicine,
+        // Strength
+        Athletics,
+
+        // Agility
         Stealth,
         SlightOfHand,
+        Acrobatics,
+
+        // Endurance
+        Perception,
+        Grit,
+
+        // Willpower
+        Determination,
+        Intuition,
+
+        // Faith
+        Religion,
+        Ritualism,
+        Occult,
+        Medicine,
+
+        // Intelligence
+        Nature,
+        History,
+        Arcana,
+        Technology,
+
+        // Charisma
+        Persuasion,
+        Deception,
+        StreetSmarts,
         Performance,
         Barter,
-        Acrobatics,
-        Athletics,
-        Intuition,
-        Technology,
+        
 
         MaxHp,
         MaxAp,
@@ -40,9 +59,12 @@ namespace Iterum.models.enums
         EvasionRating,
         Initiative,
 
-        WeaponAttackModifier,
-        WeaponDamageModifier,
+        MeleeWeaponAttackModifier,
+        MeleeWeaponDamageModifier,
+        RangedWeaponAttackModifier,
+        RangedWeaponDamageModifier,
         SpellAttackModifier,
         SpellDamageModifier,
+        GlobalDamage
     }
 }

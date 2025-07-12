@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.races;
 using Iterum.models.enums;
 using Iterum.utils;
 using System.Collections.Generic;
@@ -6,13 +7,11 @@ using UnityEngine;
 
 namespace Iterum.models.interfaces
 {
-    public abstract class IDownableCreature : ICreature
+    public class IDownableCreature : ICreature
     {
-        protected IDownableCreature(IRace race, string name, Vector3Int position, string imagePath = null) : base(race, name, position, imagePath)
-        {
-        }
+        public IDownableCreature(BaseRace race, string name, string imagePath = "Textures/default", string description = "") : base(race, name, imagePath, description){}
 
-        public List<bool> DeathSaves { get; }
+        public List<bool> DeathSaves { get; } = new List<bool>();
         public bool IsDown { get; set; }
 
         public new void TakeDamage(IEnumerable<DamageResult> damage)

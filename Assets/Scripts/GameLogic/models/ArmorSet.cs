@@ -1,6 +1,8 @@
+using Assets.Scripts.Utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,8 +22,22 @@ namespace Iterum.models
             });
         }
 
+        public ArmorSet(){}
+
+        [JsonConverter(typeof(DictionaryKeyArmorSlotConverter))]
         private readonly IDictionary<ArmorSlot, IArmor[]> armors = new Dictionary<ArmorSlot, IArmor[]>();
-        private readonly ICreature creature;
+        private ICreature creature;
+
+        public void SetCreature(ICreature creature) {
+            this.creature = creature;
+            IDictionary<ArmorSlot, int> armorSlots = creature.GetArmorSlots();
+            armorSlots.Keys.ToList().ForEach(key =>
+            {
+                bool result = armorSlots.TryGetValue(key, out int number);
+                if (result && number >= 0)
+                    armors.Add(key, new IArmor[number]);
+            });
+        }
 
         public void RecalculateArmorSlots()
         {

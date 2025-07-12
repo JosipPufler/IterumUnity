@@ -1,5 +1,8 @@
+using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.Utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using Attribute = Iterum.models.enums.Attribute;
@@ -8,25 +11,48 @@ namespace Iterum.models
 {
     public class ModifierManager
     {
-        IDictionary<Attribute, int> Modifiers { get; } = new Dictionary<Attribute, int>();
-        IDictionary<Attribute, double> Multipliers { get; } = new Dictionary<Attribute, double>();
-        IDictionary<DamageType, double> Resistances { get; } = new Dictionary<DamageType, double>();
-        IDictionary<DamageCategory, double> CategoryResistances { get; } = new Dictionary<DamageCategory, double>();
-        public IDictionary<WeaponSlot, int> WeaponSlots { get; } = new Dictionary<WeaponSlot, int>();
-        public IDictionary<ArmorSlot, int> ArmorSlots { get; } = new Dictionary<ArmorSlot, int>();
+        public Dictionary<Attribute, int> BaseAttributes { get; } = new() { { Attribute.ApRegen, 4 } };
+        public Dictionary<Attribute, int> Modifiers { get; } = new();
+        public Dictionary<DamageType, int> DamageTypeModifiers { get; } = new();
+        public Dictionary<DamageCategory, int> DamageCategoryModifiers { get; } = new();
 
-        private readonly ICreature creature;
+        public Dictionary<AttackTypeEnum, RollType> OutgoingAttackRolls { get; } = new() {
+            { AttackTypeEnum.Spell, RollType.Normal },
+            { AttackTypeEnum.MeleeWeapon, RollType.Normal },
+            { AttackTypeEnum.RangedWeapon, RollType.Normal },
+        };
+        public Dictionary<AttackTypeEnum, RollType> IndboundAttackRolls { get; } = new() { 
+            { AttackTypeEnum.Spell, RollType.Normal },
+            { AttackTypeEnum.MeleeWeapon, RollType.Normal },
+            { AttackTypeEnum.RangedWeapon, RollType.Normal },
+        }; 
+
+        public Dictionary<Attribute, double> Multipliers { get; } = new();
+        public Dictionary<DamageType, double> Resistances { get; } = new();
+        public Dictionary<DamageCategory, double> CategoryResistances { get; } = new();
+        public Dictionary<WeaponSlot, int> WeaponSlots { get; } = new();
+
+        [JsonConverter(typeof(DictionaryKeyArmorSlotConverterInt))]
+        public Dictionary<ArmorSlot, int> ArmorSlots { get; } = new();
+
+        public ICreature creature;
+
+        public ModifierManager() : this(null){}
 
         public ModifierManager(ICreature creature)
         {
             this.creature = creature;
         }
 
-        public int GetAttribute(Attribute attribute, bool original) {
+        public int GetAttribute(Attribute attribute, bool originalValue = false) {
             double total = 0;
-            if (Modifiers.TryGetValue(attribute, out int modifier) && !original)
+            if (Modifiers.TryGetValue(attribute, out int modifier) && !originalValue)
             {
                 total += modifier;
+            }
+            if (BaseAttributes.TryGetValue(attribute, out int baseAtt))
+            {
+                total += baseAtt;
             }
             if (creature.Race.RacialAttributes.TryGetValue(attribute, out int racial))
             {
@@ -45,7 +71,7 @@ namespace Iterum.models
                 total += armorModifier;
             }
 
-            if (Multipliers.TryGetValue(attribute, out double multiplier) && !original)
+            if (Multipliers.TryGetValue(attribute, out double multiplier) && !originalValue)
             {
                 total *= multiplier;
             }
@@ -97,17 +123,39 @@ namespace Iterum.models
 
         public void SetModifier(Attribute attribute, int modifier)
         {
-            Modifiers[attribute] = modifier;
+            Modifiers[attribute] = Modifiers.GetValueOrDefault(attribute) + modifier;
+        }
+
+        public void ApplyModifiers(IDictionary<Attribute, int> modifiers) {
+            foreach (Attribute attribute in modifiers.Keys)
+            {
+                Modifiers[attribute] = Modifiers.GetValueOrDefault(attribute) + modifiers[attribute];
+            }
         }
 
         public void SetMultiplier(Attribute attribute, double multiplier)
         {
-            Multipliers[attribute] = multiplier;
+            Multipliers[attribute] = Multipliers.GetValueOrDefault(attribute) + multiplier;
         }
 
         public void SetResistance(DamageType damageType, double resistance)
         {
-            Resistances[damageType] = resistance;
+            Resistances[damageType] = Resistances.GetValueOrDefault(damageType) + resistance;
+        }
+
+        public int GetAttackModifier(AttackType attackType)
+        {
+            return GetAttribute(attackType.BaseAttribute.Attribute) 
+                + GetAttribute(attackType.AttackTypeAttribute) 
+                + (attackType.Proficient ? creature.ProficiencyManager.GetProficiencyBonus() : 0);
+        }
+
+        public int GetAttackDamageModifier(AttackType attackType) {
+            return GetAttribute(attackType.BaseAttribute.Attribute) + GetAttribute(attackType.AttackTypeDamageAttribute);
+        }
+
+        public int GetDamageModifierForDamageType(DamageType damageType) {
+            return DamageCategoryModifiers.GetValueOrDefault(damageType.DamageCategory) + DamageTypeModifiers.GetValueOrDefault(damageType);
         }
     }
 }

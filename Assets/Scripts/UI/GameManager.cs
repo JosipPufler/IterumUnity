@@ -24,6 +24,7 @@ namespace Iterum.Scripts.UI
                 MapManager.EnsureExists();
                 UserManager.EnsureExists();
                 JournalManager.EnsureExists();
+                CharacterManager.EnsureExists();
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
             }

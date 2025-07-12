@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.creatures;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
@@ -5,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using UnityEngine;
 using Attribute = Iterum.models.enums.Attribute;
 
 namespace Iterum.models
@@ -24,23 +26,43 @@ namespace Iterum.models
 
     public class ClassManager
     {
-        readonly ICreature creature;
-        readonly HashSet<IClass> classes = new HashSet<IClass>(new ClassComparer());
+        public ICreature creature;
+        public HashSet<IClass> classes { get; private set; } = new(new ClassComparer());
 
         public ClassManager(ICreature creature)
         {
             this.creature = creature ?? throw new ArgumentNullException(nameof(creature));
         }
 
+        public ClassManager(){}
+
         public bool LevelUpClass<T>() where T : IClass, new() {
             IClass characterClass = classes.First(x => x.GetType() == typeof(T));
             return characterClass != null && characterClass.LevelUp();
         }
 
-        public bool StartClass<T>() where T : IClass, new()
+        public bool StartClass<T>() where T : BaseClass, new()
         {
-            IClass characterClass = new T();
+            BaseClass characterClass = new T();
             return characterClass.CanJoin(creature) && classes.Add(characterClass);
+        }
+
+        public bool StartClass(Type classType)
+        {
+            if (!typeof(BaseClass).IsAssignableFrom(classType))
+            {
+                Debug.LogError($"Type {classType.Name} does not inherit from BaseClass");
+                return false;
+            }
+
+            if (classType.GetConstructor(Type.EmptyTypes) == null)
+            {
+                Debug.LogError($"Type {classType.Name} does not have a default constructor");
+                return false;
+            }
+
+            BaseClass characterClass = (BaseClass)Activator.CreateInstance(classType);
+            return characterClass.CanJoin(creature) && characterClass.InitCreature(creature) && classes.Add(characterClass);
         }
 
         public IList<IClass> GetAllClasses() { 

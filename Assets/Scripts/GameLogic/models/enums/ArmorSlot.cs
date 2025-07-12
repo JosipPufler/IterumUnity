@@ -1,5 +1,9 @@
+using System;
+using Newtonsoft.Json;
+
 namespace Iterum.models.enums
 {
+    [JsonConverter(typeof(ArmorSlotConverter))]
     public struct ArmorSlot
     {
         public string Name { get; set; }
@@ -18,5 +22,19 @@ namespace Iterum.models.enums
             Name = name;
             ArmorMultiplier = armorMultiplier;
         }
+
+        public static ArmorSlot FromName(string name) => name switch
+        {
+            "Head" => Head,
+            "Necklace" => Necklace,
+            "Torso" => Torso,
+            "Hand" => Hand,
+            "Ring" => Ring,
+            "Legs" => Legs,
+            "Boots" => Boots,
+            _ => throw new ArgumentException($"Unknown ArmorSlot name: {name}")
+        };
+
+        public override string ToString() => Name;
     }
 }

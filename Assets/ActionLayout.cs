@@ -26,7 +26,7 @@ public class ActionLayout : MonoBehaviour
         float leftW = leftText.preferredWidth;
         float rightW = rightText.preferredWidth;
 
-        float target = totalW - leftW - rightW - minSpacer;
+        float target = totalW - leftW - rightW - minSpacer * 2;
         if (target < minSpacer) target = minSpacer;
 
         spacer.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, target);

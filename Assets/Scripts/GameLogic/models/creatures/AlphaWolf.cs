@@ -11,7 +11,7 @@ namespace Assets.Scripts.GameLogic.models.creatures
     {
         public new static string DisplayName { get; private set; } = "Alpha wolf";
 
-        public AlphaWolf() : base(new Boring(), DisplayName, new Vector3Int(), "Textures/alphawolf")
+        public AlphaWolf() : base(new Boring(), DisplayName, "Textures/alphawolf")
         {
             WeaponSet.AddWeapon(new WolfTeeth());
             Race.RacialAttributes[Attribute.MaxHp] = 40;

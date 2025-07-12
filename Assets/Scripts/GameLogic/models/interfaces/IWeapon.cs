@@ -12,6 +12,7 @@ namespace Iterum.models.interfaces
         IList<WeaponTrait> WeaponTraits { get; }
         IList<IAction> WeaponActions { get; }
         WeaponSlotDetails WeaponSlotDetails { get; set; }
+        ICreature Creature { get; set; }
 
         int EvasionRatingBonus 
         {

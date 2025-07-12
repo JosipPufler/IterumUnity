@@ -1,5 +1,7 @@
+using Assets.Scripts.Utils.converters;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 
@@ -11,14 +13,21 @@ namespace Iterum.models
             this.creature = creature;
         }
 
-        ICreature creature;
-        Dictionary<Skill, int> SkillProficiencies = new Dictionary<Skill, int>();
-        
-        HashSet<Stat> SavingThrowProficiencies { get; } = new HashSet<Stat>();
+        public ProficiencyManager(){}
+
+        [JsonIgnore]
+        public ICreature creature;
+
+        [JsonProperty]
+        [JsonConverter(typeof(DictionaryKeySkillConverter))]
+        public Dictionary<Skill, int> SkillProficiencies { get; private set; } = new();
+
+        [JsonProperty]
+        public HashSet<Stat> SavingThrowProficiencies { get; private set; } = new HashSet<Stat>();
 
         public int GetProficiencyBonus()
         {
-            return (int)Math.Ceiling(creature.ClassManager.GetLevel() / 4.0);
+            return (int)Math.Ceiling(creature.ClassManager.GetLevel() / 2.0);
         }
 
         public int GetSavingThrowProficiencyBonus(Stat stat)

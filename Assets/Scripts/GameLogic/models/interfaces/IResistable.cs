@@ -5,7 +5,7 @@ namespace Iterum.models.interfaces
 {
     public interface IResistable
     {
-        IDictionary<DamageType, double> Resistances { get; }
-        IDictionary<DamageCategory, double> CategoryResistances { get; }
+        Dictionary<DamageType, double> Resistances { get; }
+        Dictionary<DamageCategory, double> CategoryResistances { get; }
     }
 }

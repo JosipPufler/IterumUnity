@@ -16,10 +16,30 @@ public class CampaignMenuManager : MonoBehaviour
     public GameObject actionPanelContent;
     public GameObject actionEntryPrefab;
 
-    public void SetCreature(ICreature creature) {
-        statText.text = creature.GetStatString();
+    ICreature currentCreature;
 
-        foreach (IAction action in creature.GetActions())
+    private void Update()
+    {
+        if (currentCreature != null)
+        {
+            statText.text = currentCreature.GetStatString();
+        }
+    }
+
+    public void SetCreature(ICreature creature) {
+        currentCreature = creature;
+
+        foreach (Transform child in inventoryContent.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (Transform child in actionPanelContent.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (IAction action in currentCreature.GetActions())
         {
             var entry = Instantiate(actionEntryPrefab, actionPanelContent.transform);
 
@@ -30,15 +50,18 @@ public class CampaignMenuManager : MonoBehaviour
             entry.SetActive(true);
         }
 
-        foreach (IItem item in creature.Inventory.Keys) {
+        foreach (IItem item in currentCreature.Inventory.Keys)
+        {
             var entry = Instantiate(inventoryPrefab, inventoryContent.transform);
 
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"{item.Name} x{creature.Inventory[item]}";
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"{item.Name} x{currentCreature.Inventory[item]}";
             Button btnUse = entry.transform.Find("btnUse").GetComponent<Button>();
 
-            if (item is IConsumable consumable) {
+            if (item is IConsumable consumable)
+            {
                 // To do
                 btnUse.onClick.AddListener(() => {
+
                     consumable.Consume(null, null);
                 });
             }

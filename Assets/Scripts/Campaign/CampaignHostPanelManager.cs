@@ -1,6 +1,12 @@
+using System;
 using System.Collections.Generic;
+using Assets.Scripts.GameLogic.models.creatures;
+using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.Utils;
 using Assets.Scripts.Utils.Managers;
 using Iterum.DTOs;
+using Iterum.models.creatures;
+using Iterum.Scripts.UI;
 using Iterum.Scripts.Utils;
 using Iterum.Scripts.Utils.Managers;
 using TMPro;
@@ -29,8 +35,43 @@ public class CampaignHostPanelManager : MonoBehaviour
     public TMP_Text journalPreviewContent;
     public GameObject journalPreviewPanel;
 
+    [Header("Combat")]
+    public TMP_Dropdown dropdown;
+    public Button btnStartCombat;
+    public GameObject creatureEntryPrefab;
+    public GameObject content;
+    public GeneralManager generalManager;
+
+    readonly List<Type> creatures = new() { typeof(Wolf), typeof(AlphaWolf) };
+
     void Start()
     {
+        dropdown.ClearOptions();
+
+        var options = new List<string>(Enum.GetNames(typeof(Team)));
+        dropdown.AddOptions(options);
+        dropdown.onValueChanged.AddListener(value => {
+            GameManager.Instance.Team = (Team)value;
+        });
+
+        foreach (var creature in creatures)
+        {
+            var entry = Instantiate(creatureEntryPrefab, content.transform);
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = StaticUtils.GetDisplayName(creature);
+            entry.GetComponent<Button>().onClick.AddListener(() => {
+                if (GameManager.Instance.SelectedCreature == creature)
+                {
+                    GameManager.Instance.SelectedCreature = null;
+                }
+                else
+                {
+                    GameManager.Instance.SelectedCreature = creature;
+                }
+            });
+        }
+
+        btnStartCombat.onClick.AddListener(() => generalManager.StartCombatTurn(true));
+
         FetchAll();
     }
 

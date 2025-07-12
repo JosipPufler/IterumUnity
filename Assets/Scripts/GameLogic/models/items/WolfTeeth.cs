@@ -11,10 +11,10 @@ namespace Iterum.models.items
     {
         public WolfTeeth()
         {
-            WeaponActions.Add(new BasicWeaponAttack(this, "Bite"));
+            WeaponActions.Add(new BasicMeleeWeaponAttack(this, "Bite"));
         }
 
-        public IList<DamageInfo> DamageInfos { get; } = new List<DamageInfo> { new DamageInfo(2, Dice.d6, DamageType.Piercing) };
+        public IList<DamageInfo> DamageInfos { get; } = new List<DamageInfo> { new(2, Dice.d6, DamageType.Piercing) };
 
         public int ReachModifier { get; } = 0;
 
@@ -30,6 +30,7 @@ namespace Iterum.models.items
 
         public Dictionary<Attribute, int> AttributeModifiers => new() { { Attribute.MaxHp, 2 } };
         public Dictionary<Attribute, double> AttributeMultipliers { get; } = new Dictionary<Attribute, double>();
+        public ICreature Creature { get; set; }
 
         public bool CanEquip(ICreature creature)
         {

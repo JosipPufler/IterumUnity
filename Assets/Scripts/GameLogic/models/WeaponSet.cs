@@ -10,13 +10,15 @@ namespace Iterum.models
     public class WeaponSet
     {
         public IList<IWeapon> Weapons { get; set; }
-        readonly ICreature creature;
+        public ICreature creature;
 
         public WeaponSet(ICreature creature)
         {
             this.creature = creature;
             Weapons = new List<IWeapon>();
         }
+
+        public WeaponSet(){}
 
         public IDictionary<WeaponSlot, int> CalculateFreeWeaponSlots()
         {
@@ -40,6 +42,7 @@ namespace Iterum.models
             if (weapon.CanEquip(creature) && CalculateFreeWeaponSlots().TryGetValue(weapon.WeaponSlotDetails.Slot, out int numberOfFreeSlots) && numberOfFreeSlots >= weapon.WeaponSlotDetails.SlotsNeeded)
             {
                 Weapons.Add(weapon);
+                weapon.Creature = creature;
                 return true;
             }
             return false;
@@ -54,6 +57,7 @@ namespace Iterum.models
             if (weapon.CanEquip(creature) && CalculateFreeWeaponSlots().TryGetValue(weapon.WeaponSlotDetails.Slot, out int numberOfFreeSlots) && numberOfFreeSlots >= weapon.WeaponSlotDetails.SlotsNeeded && source.Remove(weapon))
             {
                 Weapons.Add(weapon);
+                weapon.Creature = creature;
                 return true;
             }
             return false;

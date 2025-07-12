@@ -1,3 +1,5 @@
+using Assets.Scripts.GameLogic.models;
+using Assets.Scripts.GameLogic.models.actions;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using System;
@@ -5,9 +7,9 @@ using System.Collections.Generic;
 
 namespace Iterum.models.actions
 {
-    public class Consume : IAction
+    public class Consume : BaseAction
     {
-        public Consume(IConsumable consumable, string description, int apCost, int mpCost, IDictionary<TargetType, int> targetTypes, Func<ActionInfo, ActionResult> func) {
+        public Consume(IConsumable consumable, string description, int apCost, int mpCost, Dictionary<TargetData, int> targetTypes, Func<ActionInfo, ActionResult> func) {
             Description = description;
             this.consumable = consumable;
             Name = $"Consume {consumable.Name}";
@@ -18,17 +20,5 @@ namespace Iterum.models.actions
         }
 
         IConsumable consumable;
-
-        public string Name { get; }
-
-        public string Description { get; }
-
-        public int ApCost { get; }
-
-        public IDictionary<TargetType, int> TargetTypes { get; }
-
-        public Func<ActionInfo, ActionResult> Action { get; }
-
-        public int MpCost { get; }
     }
 }

@@ -1,7 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using Assets.Scripts.Utils;
+using Assets.Scripts.Utils.converters;
+using Newtonsoft.Json;
 
 namespace Iterum.models.enums
 {
+    [JsonConverter(typeof(StatConverter))]
     public class Stat
     {
         private Stat(string name, string shotName, Attribute attribute)
@@ -24,5 +30,20 @@ namespace Iterum.models.enums
         public static readonly Stat Charisma = new("Charisma", "CHA", Attribute.Charisma);
 
         public static IEnumerable<Stat> GetAllStats() => new List<Stat>() { Strength, Agility, Endurance, Willpower, Faith, Intelligence, Charisma };
+
+        public static Stat FromName(string name) =>
+            GetAllStats().FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException($"Unknown stat name: {name}");
+    }
+
+    public enum StatEnum 
+    {
+        Strength,
+        Agility,
+        Endurance,
+        Willpower,
+        Faith,
+        Intelligence,
+        Charisma,
     }
 }

@@ -201,4 +201,9 @@ public class CameraController : MonoBehaviour
         euler.z = Mathf.Round(euler.z / snapDegrees) * snapDegrees;
         return Quaternion.Euler(euler);
     }
+
+    public void FocusOn(Vector3 worldPosition)
+    {
+        newPosition = worldPosition;
+    }
 }

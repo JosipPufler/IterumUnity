@@ -1,24 +1,31 @@
 using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.GameLogic.models.races;
 using Iterum.models.enums;
 using Iterum.models.items;
 using Iterum.utils;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using UnityEngine;
 using Attribute = Iterum.models.enums.Attribute;
 
 namespace Iterum.models.interfaces
 {
-    public abstract class ICreature : IGameObject, IActionable, ISpellcaster, IDamageable, IContainer, ITargetable
+    public class ICreature : IGameObject, IActionable, ISpellcaster, IDamageable, IContainer, ITargetable
     {
-        public ICreature(IRace race, string name, Vector3Int position, string imagePath = null)
+        private const int movementPerAp = 2;
+        private const int BaseSaveDC = 8;
+
+        public ICreature(BaseRace race, string name, string imagePath = "Textures/default", string description = "")
         {
             ID = Guid.NewGuid().ToString();
             Race = race;
             Name = name;
-            CurrentPosition = position;
+            DisplayName = name;
+            CurrentPosition = new Vector3Int();
             IsDead = false;
 
             ModifierManager = new ModifierManager(this);
@@ -32,29 +39,69 @@ namespace Iterum.models.interfaces
             CurrentHp = OriginalMaxHp;
             CurrentMp = OriginalMaxMp;
             ImagePath = imagePath;
+            Description = description;
+        }
+
+        public ICreature(){
+            ModifierManager = new ModifierManager();
+            ClassManager = new ClassManager();
+            ProficiencyManager = new ProficiencyManager();
+            WeaponSet = new WeaponSet();
+            ArmorSet = new ArmorSet();
+            CurrentPosition = new Vector3Int();
+            IsDead = false;
+        }
+
+        [OnDeserialized]
+        public void InitHelpers(StreamingContext context) { 
+            ModifierManager.creature = this;
+            ClassManager.creature = this;
+            ProficiencyManager.creature = this;
+            WeaponSet.creature = this;
+            ArmorSet.SetCreature(this);
+
+            CurrentAp = OriginalMaxAp;
+            CurrentSanity = OriginalMaxSanity;
+            CurrentHp = OriginalMaxHp;
+            CurrentMp = OriginalMaxMp;
         }
 
         public string ID { get; }
         public string ImagePath { get; set; }
-        public IRace Race { get; }
-        public ClassManager ClassManager { get; }
-        public ModifierManager ModifierManager { get; }
-        public ProficiencyManager ProficiencyManager { get; }
-        public WeaponSet WeaponSet { get; }
-        public ArmorSet ArmorSet { get; }
+        public string Description { get; set; }
+        public bool IsPlayer { get; set; }
+        [JsonProperty]
+        public BaseRace Race { get; private set; }
+        [JsonProperty]
+        public ClassManager ClassManager { get; private set; }
+        [JsonProperty]
+        public ModifierManager ModifierManager { get; private set; }
+        [JsonProperty]
+        public ProficiencyManager ProficiencyManager { get; private set; }
+        [JsonProperty]
+        public WeaponSet WeaponSet { get; private set; }
+        [JsonProperty]
+        public ArmorSet ArmorSet { get; private set; }
 
         public Vector3Int CurrentPosition {  get; set; }
         public string Name {  get; set; }
-
         public bool IsDead { get; set; }
-        
+
+        public int CurrentHp { get; set; }
         public int CurrentSanity { get; set; }
-
         public int CurrentAp { get; set; }
-
         public int CurrentMp { get; set; }
+        public int MovementPoints { get; set; } = 0;
 
-        public IDictionary<WeaponSlot, int> GetWeaponSlots() {
+        public void SetBaseStats(Dictionary<Stat, int> stats) {
+            foreach (var stat in stats)
+            {
+                ModifierManager.BaseAttributes[stat.Key.Attribute] = stat.Value - 5; 
+            }
+        }
+
+        public IDictionary<WeaponSlot, int> GetWeaponSlots()
+        {
             return ModifierManager.WeaponSlots.ToArray().Concat(Race.WeaponSlots).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.Sum(x => x.Value));
         }
 
@@ -73,7 +120,7 @@ namespace Iterum.models.interfaces
 
         public int Skillcheck(Skill skill, RollType rollType) {
             int result = DiceUtils.Roll(Dice.d20, rollType);
-            return result + ModifierManager.GetAttribute(skill.Attribute, false) + ModifierManager.GetAttribute(skill.Stat.Attribute, false) + ProficiencyManager.GetSkillProficiencyBonus(skill);
+            return result +  + ModifierManager.GetAttribute(skill.Attribute, false) + ModifierManager.GetAttribute(skill.Stat.Attribute, false) + ProficiencyManager.GetSkillProficiencyBonus(skill);
         }
 
         public int SavingThrow(Stat stat, RollType rollType)
@@ -128,6 +175,7 @@ namespace Iterum.models.interfaces
             Debug.Log("IM INSANE");
         }
 
+        [JsonIgnore]
         public int EvasionRating 
         {
             get 
@@ -140,6 +188,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int Initiative
         {
             get
@@ -152,6 +201,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int OriginalMaxHp
         {
             get
@@ -160,6 +210,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int MaxHp
         {
             get
@@ -179,8 +230,8 @@ namespace Iterum.models.interfaces
         public void Heal(int ammount) {
             ((IDamageable)this).Heal(ammount);
         }
-        
 
+        [JsonIgnore]
         public int OriginalMaxSanity
         {
             get
@@ -189,6 +240,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int MaxSanity
         {
             get
@@ -205,6 +257,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int OriginalMaxMp
         {
             get
@@ -213,6 +266,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int MaxMp
         {
             get
@@ -229,6 +283,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int OriginalMaxAp
         {
             get
@@ -237,6 +292,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int MaxAp
         {
             get
@@ -253,6 +309,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int OriginalApRegen 
         {
             get
@@ -261,6 +318,7 @@ namespace Iterum.models.interfaces
             }
         }
 
+        [JsonIgnore]
         public int ApRegen
         {
             get
@@ -274,6 +332,11 @@ namespace Iterum.models.interfaces
             }
         }
 
+        public int EffectiveMovementPoints {
+            get => MovementPoints + GetMovementPerPoint() * CurrentAp; 
+        }
+
+        [JsonIgnore]
         public TargetType TargetType
         {
             get
@@ -283,8 +346,6 @@ namespace Iterum.models.interfaces
         }
 
         public IDictionary<IItem, int> Inventory { get; } = new Dictionary<IItem, int>();
-
-        public int CurrentHp { get; set; }
 
         public Corpse Die() {
             IsDead = true;
@@ -308,6 +369,11 @@ namespace Iterum.models.interfaces
             {
                 stringBuilder.AppendLine($"MP: {CurrentMp}/{MaxMp}");
             }
+            if (MovementPoints > 0)
+            {
+                stringBuilder.AppendLine($"Movement: {MovementPoints}");
+            }
+            stringBuilder.AppendLine($"Efective Movement: {EffectiveMovementPoints}");
             return stringBuilder.ToString();
         }
 
@@ -321,12 +387,43 @@ namespace Iterum.models.interfaces
             return $"{Name}\n{CurrentHp}/{MaxHp}HP ({Math.Round((double)CurrentHp / MaxHp, 2)*100}%)";
         }
 
-        public int GetAttackModifier(Stat stat, AttackType type) {
-            if (type == AttackType.Spell)
+        public int GetSaveDC(Stat stat) {
+            return BaseSaveDC + ModifierManager.GetAttribute(stat.Attribute) + ProficiencyManager.GetProficiencyBonus();
+        }
+
+        public bool CreateMovementPoint() {
+            if (CurrentAp > 0)
             {
-                return ModifierManager.GetAttribute(stat.Attribute, false) + ModifierManager.GetAttribute(Attribute.SpellAttackModifier, false);
+                CurrentAp--;
+                MovementPoints += GetMovementPerPoint();
+                return true;
             }
-            return ModifierManager.GetAttribute(stat.Attribute, false) + ModifierManager.GetAttribute(Attribute.WeaponAttackModifier, false);
+            return false;
+        }
+
+        private int GetMovementPerPoint()
+        {
+            return movementPerAp + ModifierManager.GetAttribute(Attribute.WalkingSpeed, false);
+        }
+
+        public void EndTurn() {
+            MovementPoints = 0;
+            if (CurrentAp > MaxAp)
+            {
+                CurrentAp = MaxAp;
+            }
+        }
+
+        public void StartTurn() {
+            CurrentAp += ApRegen;
+            if (CurrentAp > MaxAp)
+            {
+                CurrentAp = MaxAp;
+            }
+        }
+
+        public int GetAttributeModifier(Attribute attribute, bool original = false) { 
+            return ModifierManager.GetAttribute(attribute, original);
         }
     }
 }

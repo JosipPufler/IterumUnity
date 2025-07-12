@@ -8,8 +8,7 @@ public class ActionEntryData : MonoBehaviour
 
     public void SetAction(IAction action) { 
         this.action = action;
-        UIToolTipTrigger toolTipTrigger = gameObject.GetComponent<UIToolTipTrigger>();
-        if (toolTipTrigger == null) { 
+        if (!gameObject.TryGetComponent<UIToolTipTrigger>(out var toolTipTrigger)) { 
             toolTipTrigger = gameObject.AddComponent<UIToolTipTrigger>();
         }
         toolTipTrigger.tooltipText = action.GetLongDescription();

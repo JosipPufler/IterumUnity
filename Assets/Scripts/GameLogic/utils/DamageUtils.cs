@@ -5,10 +5,8 @@ using System.Linq;
 
 namespace Iterum.utils
 {
-    public class DamageUtils
+    public static class DamageUtils
     {
-        private DamageUtils() { }
-
         public static IDictionary<DamageType, double> CalculateEfectiveDamage(IEnumerable<IResistable> resistables, IDictionary<DamageType, double> additionalModifiers)
         {
             IDictionary<DamageCategory, double> categoryResistances = CalculateEfectiveCategoryDamage(resistables);
