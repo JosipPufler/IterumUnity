@@ -1,3 +1,4 @@
+using Iterum.models.enums;
 using Iterum.models.interfaces;
 using System;
 using System.Collections.Generic;
@@ -34,22 +35,24 @@ namespace Iterum.models.items
             }*/
         }
 
-        public void TakeDamage(IEnumerable<DamageResult> damage)
+        public int TakeDamage(IEnumerable<DamageResult> damage)
         {
-            IDictionary<enums.DamageType, double> resistances = creature.Race.GetEffectiveDamageResistances();
-            IDictionary<enums.DamageCategory, double> categoryResistances = creature.Race.GetEffectiveDamageCategoryResistances();
+            IDictionary<DamageType, double> resistances = creature.Race.GetEffectiveDamageResistances();
+            IDictionary<DamageCategory, double> categoryResistances = creature.Race.GetEffectiveDamageCategoryResistances();
+            int totalDamageTaken = 0;
             foreach (DamageResult damageResult in damage)
             {
-
-                CurrentHp = (int)Math.Ceiling(CurrentHp -
-                    damageResult.Amount
+                int damageTaken = (int)Math.Ceiling(damageResult.Amount
                         * (categoryResistances.TryGetValue(damageResult.DamageType.DamageCategory, out double categoryValue) ? categoryValue : 1)
                         * (resistances.TryGetValue(damageResult.DamageType, out double typeValue) ? typeValue : 1));
+                totalDamageTaken += damageTaken;
+                CurrentHp -= damageTaken;
                 if (CurrentHp <= 0)
                 {
                     Destroy();
                 }
             }
+            return totalDamageTaken;
         }
 
         #nullable enable

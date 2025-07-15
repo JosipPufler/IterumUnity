@@ -15,6 +15,7 @@ namespace Assets.Scripts.Map
         public bool isFlatTopped = true;
         public Material hexMaterial;
         public Material highlightMaterial;
+        public Material targetMaterial;
 
         protected static readonly Dictionary<Vector3Int, GameObject> grid = new();
         protected static readonly Vector2Int[] axialDirs = {
@@ -30,14 +31,14 @@ namespace Assets.Scripts.Map
                 return;
             }
 
-            if (!grid.TryGetValue(key, out GameObject hex))
+            if (!grid.TryGetValue(key, out _))
             {
                 GameObject tile = new($"Hex {key.x},{key.y}, ", typeof(HexRenderer));
                 tile.transform.position = GetPositionForHexFromCoordinate(new Vector2Int(key.x, key.z));
                 tile.tag = "Hex";
 
                 HexRenderer r = tile.GetComponent<HexRenderer>();
-                r.Initialize(hexMaterial, highlightMaterial, 0, innerSize, height * 2, isFlatTopped, key.y * height * 2);
+                r.Initialize(hexMaterial, highlightMaterial, targetMaterial, 0, innerSize, height * 2, isFlatTopped, key.y * height * 2);
 
                 tile.transform.SetParent(transform, true);
                 grid[key] = tile;
@@ -120,6 +121,32 @@ namespace Assets.Scripts.Map
                 if (delta == dir) return true;
 
             return false;
+        }
+
+        public bool IsWithinRange(Vector3Int a, Vector3Int b, int minDist, int maxDist)
+        {
+            if (Mathf.Abs(a.y - b.y) > maxDist)
+                return false;
+
+            Vector2Int axialA = OffsetToAxial(new Vector2Int(a.x, a.z));
+            Vector2Int axialB = OffsetToAxial(new Vector2Int(b.x, b.z));
+
+            int distance = CubeDistance(axialA, axialB);
+
+            return distance >= minDist && distance <= maxDist;
+        }
+
+        protected static int CubeDistance(Vector3Int a, Vector3Int b)
+        {
+            return CubeDistance(new Vector2Int(a.x, a.z), new Vector2Int(b.x, b.z));
+        }
+
+        protected static int CubeDistance(Vector2Int a, Vector2Int b)
+        {
+            int dq = a.x - b.x;
+            int dr = a.y - b.y;
+            int ds = -dq - dr;
+            return (Mathf.Abs(dq) + Mathf.Abs(dr) + Mathf.Abs(ds)) / 2;
         }
 
         public Vector2Int WorldToHex(Vector3 worldPos)

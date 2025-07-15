@@ -1,4 +1,6 @@
-﻿using Iterum.models.enums;
+﻿using Assets.Scripts.Utils.converters;
+using Iterum.models.enums;
+using Newtonsoft.Json;
 
 namespace Assets.Scripts.GameLogic.models.enums
 {
@@ -6,6 +8,7 @@ namespace Assets.Scripts.GameLogic.models.enums
     {
         public string Name { get; set; }
         public bool Proficient { get; set; }
+        [JsonConverter(typeof(StatConverter))]
         public Stat BaseAttribute { get; set; }
         public AttackTypeEnum AttackTypeEnum { get; set; }
         public Attribute AttackTypeAttribute { get; set; }
@@ -33,6 +36,16 @@ namespace Assets.Scripts.GameLogic.models.enums
         public static AttackType SpellAttack(Stat baseStat, bool proficient)
         {
             return new AttackType("Spell attack", baseStat, proficient, AttackTypeEnum.Spell, Attribute.SpellAttackModifier, Attribute.SpellDamageModifier);
+        }
+
+        public static AttackType CreateByEnum(AttackTypeEnum attackType, Stat stat, bool proficient) {
+            return attackType switch
+            {
+                AttackTypeEnum.RangedWeapon => RangedWeapon(stat, proficient),
+                AttackTypeEnum.Spell => SpellAttack(stat, proficient),
+                AttackTypeEnum.MeleeWeapon => MeleeWeapon(stat, proficient),
+                _ => null,
+            };
         }
     }
 

@@ -76,6 +76,8 @@ public class CharacterToken : MonoBehaviour
 
     void Update()
     {
+        toolTipTrigger.tooltipText = creature.GetToolTipText();
+
         if (forceOutline)
         {
             ShowOutline();
@@ -209,7 +211,7 @@ public class CharacterToken : MonoBehaviour
 
         if (texture2d == null)
         {
-            AssetManager.Instance.GetImage(creature.ImagePath, SetTexture, error => Debug.Log(error));
+            AssetManager.Instance.PreviewImage(creature.ImagePath, SetTexture, error => Debug.Log(error));
         }
         else
         {

@@ -1,6 +1,7 @@
 using Assets.Scripts.GameLogic.models;
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.GameLogic.utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
@@ -35,24 +36,16 @@ namespace Iterum.models.actions
         ActionResult Func(ActionInfo actionInfo) {
             ICreature targetCreature = (ICreature)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First().Targetable;
             ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
+            ICreature originCreature = actionInfo.OriginCreature;
 
-            if (targetCreature != null && ApCost <= actionInfo.OriginCreature.CurrentAp && MpCost <= actionInfo.OriginCreature.CurrentMp)
+            if (targetCreature != null && ApCost <= originCreature.CurrentAp && MpCost <= originCreature.CurrentMp)
             {
-                actionInfo.OriginCreature.CurrentAp -= ApCost;
-                actionInfo.OriginCreature.CurrentMp -= MpCost;
+                Stat baseStat = Stat.Strength;
+                if (weapon.WeaponTraits.Contains(WeaponTrait.Finnes) && originCreature.GetAttributeModifier(Attribute.Agility) > originCreature.GetAttributeModifier(Attribute.Strength)) { 
+                    baseStat = Stat.Agility;
+                }
 
-                int attackModifier = actionInfo.OriginCreature.GetAttackModifier(Stat.Strength, AttackType.MeleeWeapon);
-                if (weapon.WeaponTraits.Contains(WeaponTrait.Finnes) && actionInfo.OriginCreature.GetAttackModifier(Stat.Agility, AttackType.MeleeWeapon) > attackModifier)
-                {
-                    attackModifier = actionInfo.OriginCreature.GetAttackModifier(Stat.Agility, AttackType.MeleeWeapon);
-                }
-                int result = DiceUtils.Roll(Dice.d20, targetCreature.GetTargetRollType()) + attackModifier;
-                if (result >= targetCreature.EvasionRating)
-                {
-                    IEnumerable<DamageResult> damage = weapon.DamageInfos.Select(info => info.GetResult(RollType.Normal));
-                    actionResultBuilder.AmountDamaged(new List<KeyValuePair<IDamageable, IEnumerable<DamageResult>>>() { new(targetCreature, damage) });
-                    targetCreature.TakeDamage(damage);
-                }
+                CombatUtils.Attack(originCreature, targetCreature, AttackType.MeleeWeapon(baseStat, originCreature.ProficiencyManager.IsProficient(weapon)), new ActionPackage() { DamageOnSuccess = weapon.DamageInfos }, actionResultBuilder);
                 return actionResultBuilder.Build();
             }
             return actionResultBuilder.Fail().Build();

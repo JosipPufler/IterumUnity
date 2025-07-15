@@ -1,7 +1,10 @@
+using Assets.DTOs;
+using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.GameLogic.models.races;
 using Iterum.models.enums;
 using Iterum.models.items;
+using Iterum.Scripts.Utils.Managers;
 using Iterum.utils;
 using Newtonsoft.Json;
 using System;
@@ -17,7 +20,6 @@ namespace Iterum.models.interfaces
     public class ICreature : IGameObject, IActionable, ISpellcaster, IDamageable, IContainer, ITargetable
     {
         private const int movementPerAp = 2;
-        private const int BaseSaveDC = 8;
 
         public ICreature(BaseRace race, string name, string imagePath = "Textures/default", string description = "")
         {
@@ -64,6 +66,22 @@ namespace Iterum.models.interfaces
             CurrentSanity = OriginalMaxSanity;
             CurrentHp = OriginalMaxHp;
             CurrentMp = OriginalMaxMp;
+            GetCustomActions();
+        }
+
+        public void GetCustomActions() {
+            ActionManager.Instance.GetActions(FillCustomActions, null);
+        }
+
+        private void FillCustomActions(List<ActionDto> actionDtos) {
+            foreach (var id in CustomActionIds)
+            {
+                ActionDto actionDto = actionDtos.First(x => x.Id == id);
+                if (actionDto != null)
+                {
+                    CustomActions.Add(actionDto.MapToCustomAction());
+                }
+            }
         }
 
         public string ID { get; }
@@ -92,6 +110,10 @@ namespace Iterum.models.interfaces
         public int CurrentAp { get; set; }
         public int CurrentMp { get; set; }
         public int MovementPoints { get; set; } = 0;
+
+        public List<string> CustomActionIds { get; set; } = new();
+        [JsonIgnore]
+        public List<CustomBaseAction> CustomActions { get; set; } = new();
 
         public void SetBaseStats(Dictionary<Stat, int> stats) {
             foreach (var stat in stats)
@@ -137,13 +159,14 @@ namespace Iterum.models.interfaces
             actions.AddRange(WeaponSet.GetActions());
             actions.AddRange(ArmorSet.GetActions());
             actions.AddRange(ClassManager.GetClassActions());
+            actions.AddRange(CustomActions);
 
             return actions;
         }
 
-        public void TakeDamage(IEnumerable<DamageResult> damage) {
+        public int TakeDamage(IEnumerable<DamageResult> damage) {
             var sources = new List<IResistable>();
-
+            int damageTaken = 0;
             sources.AddRange(ArmorSet.GetArmor());
             sources.AddRange(ClassManager.GetAllClasses());
             sources.Add(Race);
@@ -155,6 +178,7 @@ namespace Iterum.models.interfaces
                 {
                     if (damageResult.DamageType.DamageCategory.DamageClass == DamageClass.Health)
                     {
+                        damageTaken += (int)Math.Ceiling(damageResult.Amount * resistance);
                         CurrentHp -= (int)Math.Ceiling(damageResult.Amount * resistance);
                     }
                     else
@@ -162,12 +186,18 @@ namespace Iterum.models.interfaces
                         CurrentSanity -= (int)Math.Ceiling(damageResult.Amount * resistance);
                     }
                 }
+                else
+                {
+                    CurrentHp -= damageResult.Amount;
+                    damageTaken += damageResult.Amount;
+                }
             }
             if (CurrentSanity <= 0)
             {
                 CurrentSanity = 0;
                 GoInsane();
             }
+            return damageTaken;
         }
 
         public void GoInsane()
@@ -364,11 +394,9 @@ namespace Iterum.models.interfaces
         public string GetStatString() {
             StringBuilder stringBuilder = new();
             stringBuilder.AppendLine($"HP: {CurrentHp}/{MaxHp}");
+            stringBuilder.AppendLine($"Sanity: {CurrentSanity}/{MaxSanity}");
             stringBuilder.AppendLine($"AP: {CurrentAp}/{MaxAp}");
-            if (MaxMp > 0 || OriginalMaxMp > 0)
-            {
-                stringBuilder.AppendLine($"MP: {CurrentMp}/{MaxMp}");
-            }
+            stringBuilder.AppendLine($"MP: {CurrentMp}/{MaxMp}");
             if (MovementPoints > 0)
             {
                 stringBuilder.AppendLine($"Movement: {MovementPoints}");
@@ -387,8 +415,8 @@ namespace Iterum.models.interfaces
             return $"{Name}\n{CurrentHp}/{MaxHp}HP ({Math.Round((double)CurrentHp / MaxHp, 2)*100}%)";
         }
 
-        public int GetSaveDC(Stat stat) {
-            return BaseSaveDC + ModifierManager.GetAttribute(stat.Attribute) + ProficiencyManager.GetProficiencyBonus();
+        public int GetSaveDC(SavingThrow savingThrow) {
+            return savingThrow.BaseDC + ModifierManager.GetAttribute(savingThrow.OriginStat.Attribute) + ProficiencyManager.GetProficiencyBonus();
         }
 
         public bool CreateMovementPoint() {

@@ -1,3 +1,4 @@
+// Assets/Scripts/Utils/MainMenu.cs
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;

@@ -1,4 +1,5 @@
 using Assets.Scripts.GameLogic.models.creatures;
+using Assets.Scripts.GameLogic.models.enums;
 using Iterum.models.actions;
 using Iterum.models.creatures;
 using Iterum.models.enums;
@@ -31,6 +32,8 @@ namespace Iterum.models.items
         public Dictionary<Attribute, int> AttributeModifiers => new() { { Attribute.MaxHp, 2 } };
         public Dictionary<Attribute, double> AttributeMultipliers { get; } = new Dictionary<Attribute, double>();
         public ICreature Creature { get; set; }
+
+        public WeaponType WeaponType { get; } = WeaponType.Natural;
 
         public bool CanEquip(ICreature creature)
         {

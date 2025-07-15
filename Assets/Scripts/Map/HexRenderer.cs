@@ -17,6 +17,7 @@ public class HexRenderer : MonoBehaviour
 
     private GameObject ringOverlay;
     public Material borderMaterial;
+    public Material targetMaterial;
     private GameObject numberCanvasGO;
     private TextMeshProUGUI numberText;
 
@@ -28,11 +29,13 @@ public class HexRenderer : MonoBehaviour
     public Material material;
     private Camera mainCam;
     private List<Face> faces = new();
+    private MeshRenderer borderMeshRenderer;
 
-    public void Initialize(Material mat, Material borderMat, float inner, float outer, float height, bool isFlat, float startingY = 0)
+    public void Initialize(Material mat, Material borderMat, Material targetMat, float inner, float outer, float height, bool isFlat, float startingY = 0)
     {
         material = mat;
         borderMaterial = borderMat;
+        targetMaterial = targetMat;
         innerSize = inner;
         outerSize = outer;
         this.height = height;
@@ -174,8 +177,8 @@ public class HexRenderer : MonoBehaviour
         ringOverlay.transform.localPosition = Vector3.up * 0.01f;
 
         MeshFilter mf = ringOverlay.AddComponent<MeshFilter>();
-        MeshRenderer mr = ringOverlay.AddComponent<MeshRenderer>();
-        mr.material = borderMaterial;
+        borderMeshRenderer = ringOverlay.AddComponent<MeshRenderer>();
+        borderMeshRenderer.material = borderMaterial;
 
         Mesh mesh = new()
         {
@@ -258,9 +261,17 @@ public class HexRenderer : MonoBehaviour
         if (ringOverlay == null) CreateBorderRing();
         if (numberCanvasGO == null) CreateNumberLabel();
 
+        borderMeshRenderer.material = borderMaterial;
         ringOverlay.SetActive(true);
         numberCanvasGO.SetActive(true);
         numberText.text = number.ToString();
+    }
+
+    public void ShowTargetHighlight() {
+        if (ringOverlay == null) CreateBorderRing();
+
+        borderMeshRenderer.material = targetMaterial;
+        ringOverlay.SetActive(true);
     }
 
     public void HideHighlight()

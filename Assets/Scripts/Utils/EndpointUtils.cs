@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices.WindowsRuntime;
+using UnityEngine.Networking;
 
 namespace Iterum.Scripts.Utils
 {
@@ -21,8 +22,8 @@ namespace Iterum.Scripts.Utils
         private static readonly string Images = $"{Base}/images";
         public static readonly string UploadImage = $"{Images}/upload";
         public static readonly string GetImages = $"{Images}/list";
-        public static string GetImage(string name) => $"{Images}/list/{name}";
-        public static string ImagePreview(string name) => $"{Images}/preview/{name}";
+        public static string GetImage(string name) => $"{Images}/list/{UnityWebRequest.EscapeURL(name)}";
+        public static string ImagePreview(string name) => $"{Images}/preview/{UnityWebRequest.EscapeURL(name)}";
         public static string DeleteImage(string name) => $"{Images}/delete/{name}";
 
         public static readonly string Maps = $"{Base}/maps";
@@ -33,6 +34,11 @@ namespace Iterum.Scripts.Utils
         public static readonly string Characters = $"{Base}/characters";
         public static readonly string CreateCharacter = $"{Characters}/save";
         public static readonly string UpdateCharacter = $"{Characters}/update";
-        public static string DeleteCharacter(string mapId) => $"{Characters}/delete/{mapId}";
+        public static string DeleteCharacter(string character) => $"{Characters}/delete/{character}";
+
+        public static readonly string Actions = $"{Base}/actions";
+        public static readonly string CreateAction = $"{Actions}/save";
+        public static readonly string UpdateAction = $"{Actions}/update";
+        public static string DeleteAction(string actionId) => $"{Actions}/delete/{actionId}";
     }
 }

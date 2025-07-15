@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Assets.DTOs;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.Utils.Managers;
 using Iterum.DTOs;
+using Iterum.models.interfaces;
 using Iterum.Scripts.Utils;
 using Iterum.Scripts.Utils.Managers;
 using UnityEngine;
@@ -13,8 +14,9 @@ namespace Iterum.Scripts.UI
         public static GameManager Instance { get; private set; }
 
         public MapDto SelectedMap;
-        public Type SelectedCreature { get; set; }
+        public ICreature SelectedCreature { get; set; }
         public Team Team { get; set; } = Team.ENEMY;
+        public ActionDto SelectedAction { get; set; }
 
         void Awake()
         {
@@ -22,6 +24,7 @@ namespace Iterum.Scripts.UI
             {
                 AssetManager.EnsureExists();
                 MapManager.EnsureExists();
+                ActionManager.EnsureExists();
                 UserManager.EnsureExists();
                 JournalManager.EnsureExists();
                 CharacterManager.EnsureExists();

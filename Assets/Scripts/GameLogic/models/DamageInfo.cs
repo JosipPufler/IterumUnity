@@ -1,5 +1,7 @@
+using Assets.Scripts.Utils.converters;
 using Iterum.models.enums;
 using Iterum.utils;
+using Newtonsoft.Json;
 
 namespace Iterum.models
 {
@@ -14,6 +16,7 @@ namespace Iterum.models
 
         public Dice Die { get; set; }
         public int NumberOfDice { get; set; }
+        [JsonConverter(typeof(DamageTypeConverter))]
         public DamageType DamageType { get; set; }
     
         public DamageResult GetResult(RollType rollType)

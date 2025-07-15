@@ -198,7 +198,7 @@ public class EditorGridLayout : HexGridLayout
                 tile.tag = "HexHolder";
 
                 HexRenderer r = tile.GetComponent<HexRenderer>();
-                r.Initialize(holderMaterial, highlightMaterial, innerSize, outerSize, height, isFlatTopped);
+                r.Initialize(holderMaterial, highlightMaterial, targetMaterial, innerSize, outerSize, height, isFlatTopped);
 
                 tile.transform.SetParent(transform, true);
                 hexHolders.Add(tile);

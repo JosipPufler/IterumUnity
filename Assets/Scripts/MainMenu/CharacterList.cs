@@ -22,7 +22,7 @@ namespace Assets.Scripts.MainMenu
         private ICreature selectedCreature;
         private string selectedId;
 
-        IList<GameObject> entries = new List<GameObject>();
+        readonly IList<GameObject> entries = new List<GameObject>();
 
         private void Start()
         {
@@ -35,8 +35,8 @@ namespace Assets.Scripts.MainMenu
         {
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                mainPanel.SetActive(true);
                 gameObject.SetActive(false);
+                mainPanel.SetActive(true);
             }
         }
 
@@ -65,10 +65,8 @@ namespace Assets.Scripts.MainMenu
             entry.transform.Find("lblLevel").GetComponent<TMP_Text>().text = character.Level.ToString();
             entry.transform.Find("lblIsPlayer").GetComponent<TMP_Text>().text = character.IsPlayer ? "Yes" : "No";
             var buttonHolder = entry.transform.Find("buttons");
-            buttonHolder.Find("btnEdit").GetComponent<Button>()
-                .onClick.AddListener(() => LoadCharacter(character));
-            buttonHolder.Find("btnDelete").GetComponent<Button>()
-                .onClick.AddListener(() => DeleteCharacter(character, entry.transform));
+            buttonHolder.Find("btnEdit").GetComponent<Button>().onClick.AddListener(() => LoadCharacter(character));
+            buttonHolder.Find("btnDelete").GetComponent<Button>().onClick.AddListener(() => DeleteCharacter(character, entry.transform));
 
             entry.SetActive(true);
 
@@ -77,6 +75,7 @@ namespace Assets.Scripts.MainMenu
 
         void LoadCharacter(CharacterDto character)
         {
+            mainPanel.SetActive(false);
             creator.gameObject.SetActive(true);
             selectedCreature = JsonConvert.DeserializeObject<ICreature>(character.Data, JsonSerializerSettingsProvider.GetSettings());
             selectedId = character.Id;
@@ -85,6 +84,7 @@ namespace Assets.Scripts.MainMenu
                 creator.LoadCreature(selectedCreature, selectedId);
             } else
                 creator.OnInitialized += OnInitializedLoadCharacter;
+            gameObject.SetActive(false);
         }
 
         void OnInitializedLoadCharacter() {

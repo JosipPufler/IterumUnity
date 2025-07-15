@@ -1,30 +1,61 @@
 ﻿using Assets.Scripts.GameLogic.models.enums;
 using Iterum.models.enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Assets.Scripts.GameLogic.models.target
 {
     public class CustomTargetData : TargetData
     {
-        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, ActionType actionType, Stat statUsed, int radius, AttackType attackType = null) : base(targetType, minDistance, maxDistance)
+        public CustomTargetData() : base(TargetType.Creature, 0, 0) { }
+
+        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable) : base(targetType, minDistance, maxDistance)
         {
-            Stat = statUsed;
-            ActionType = actionType;
-            if (actionType == ActionType.Attack && attackType != null) {
-                AttackType = attackType;
+            ActionType = ActionType.Command;
+            if (targetType == TargetType.Creature)
+            {
+                NumberOfTargets = variable;
             }
-            if (targetType == TargetType.Tile) { 
-                Radius = radius;
+            else if (targetType == TargetType.Tile)
+            {
+                Radius = variable;
+                NumberOfTargets = 1;
+            }
+        }
+
+        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, AttackType attackType) : base(TargetType.Tile, minDistance, maxDistance)
+        {
+            AttackType = attackType;
+            ActionType = ActionType.Attack;
+            ActionType = ActionType.Command;
+            if (targetType == TargetType.Creature)
+            {
+                NumberOfTargets = variable;
+            }
+            else if (targetType == TargetType.Tile)
+            {
+                Radius = variable;
+                NumberOfTargets = 1;
+            }
+        }
+
+        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, SavingThrow savingThrow) : base(TargetType.Tile, minDistance, maxDistance)
+        {
+            SavingThrow = savingThrow;
+            ActionType = ActionType.SavingThrow;
+            if (targetType == TargetType.Creature)
+            {
+                NumberOfTargets = variable;
+            }
+            else if (targetType == TargetType.Tile)
+            {
+                Radius = variable;
+                NumberOfTargets = 1;
             }
         }
 
         public AttackType AttackType { get; set; }
-        public Stat Stat { get; set; }
+        public SavingThrow SavingThrow { get; set; }
         public int Radius { get; set; }
+        public int NumberOfTargets { get; set; }
         public ActionType ActionType { get; set; }
     }
 }

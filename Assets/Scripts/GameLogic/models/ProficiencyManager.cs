@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.Utils.converters;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
@@ -9,11 +10,11 @@ namespace Iterum.models
 {
     public class ProficiencyManager
     {
-        public ProficiencyManager(ICreature creature) { 
+        public ProficiencyManager(ICreature creature) {
             this.creature = creature;
         }
 
-        public ProficiencyManager(){}
+        public ProficiencyManager() { }
 
         [JsonIgnore]
         public ICreature creature;
@@ -24,6 +25,9 @@ namespace Iterum.models
 
         [JsonProperty]
         public HashSet<Stat> SavingThrowProficiencies { get; private set; } = new HashSet<Stat>();
+
+        [JsonProperty]
+        public HashSet<WeaponType> WeaponProficiencies { get; private set; } = new() {WeaponType.Natural};
 
         public int GetProficiencyBonus()
         {
@@ -72,6 +76,10 @@ namespace Iterum.models
                     SkillProficiencies.Remove(skill);
                 }
             }
+        }
+
+        public bool IsProficient(IWeapon weapon) {
+            return WeaponProficiencies.Contains(weapon.WeaponType);
         }
     }
 }

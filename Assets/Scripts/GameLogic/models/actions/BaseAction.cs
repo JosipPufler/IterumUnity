@@ -6,9 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Windows.Forms;
-using Unity.VisualScripting;
-using static UnityEditor.PlayerSettings;
 
 namespace Assets.Scripts.GameLogic.models.actions
 {
@@ -63,6 +60,7 @@ namespace Assets.Scripts.GameLogic.models.actions
             if (ValidateTargets(actionInfo) && CanTakeAction(actionInfo.OriginCreature))
             {
                 actionInfo.OriginCreature.CurrentAp -= ApCost;
+                actionInfo.OriginCreature.CurrentMp -= MpCost;
                 return Action.Invoke(actionInfo);
             }
             return null;

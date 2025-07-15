@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Assets.DTOs;
+﻿using Assets.DTOs;
+using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.classes;
 using Assets.Scripts.GameLogic.models.creatures;
 using Assets.Scripts.GameLogic.models.races;
@@ -13,12 +10,20 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.models.races;
 using Iterum.Scripts.Utils.Managers;
+using Mirror.BouncyCastle.Bcpg;
 using Newtonsoft.Json;
 using SFB;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEditor;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEngine.EventSystems.EventTrigger;
 
 namespace Assets.Scripts.MainMenu
 {
@@ -50,6 +55,13 @@ namespace Assets.Scripts.MainMenu
         public GameObject pnlCharacterList;
         public GameObject pnlCharacterCreator;
 
+        [Header("Custom actions")]
+        public GameObject actionPanel;
+        public TMP_Text actionDescription;
+        public GameObject actionTogglePrefab;
+
+        private List<Toggle> actionToggles = new();
+
         private readonly Dictionary<Stat, TMP_InputField> statInputs = new();
         private readonly Dictionary<Skill, Toggle> skillInputs = new();
 
@@ -59,8 +71,8 @@ namespace Assets.Scripts.MainMenu
 
         private string selectedFilePath;
 
-        private List<Type> raceList = new List<Type>() { typeof(Boring) };
-        private List<Type> classList = new List<Type>() { typeof(Warrior) };
+        private readonly List<Type> raceList = new() { typeof(Boring) };
+        private readonly List<Type> classList = new() { typeof(Warrior) };
 
         public event Action OnInitialized;
         public bool IsInitialized = false;
@@ -148,6 +160,33 @@ namespace Assets.Scripts.MainMenu
                     });
                 }
             }
+
+            ActionManager.Instance.GetActions(LoadActionOptions, e => Debug.Log(e));
+        }
+
+        private void LoadActionOptions(List<ActionDto> actionDtos) {
+            foreach (var actionDto in actionDtos)
+            {
+                Toggle toggle = Instantiate(actionTogglePrefab, actionPanel.transform).GetComponent<Toggle>();
+                toggle.isOn = false;
+                toggle.transform.Find("Label").GetComponent<Text>().text = actionDto.Name;
+                DataHolder dataHolder = toggle.AddComponent<DataHolder>();
+                dataHolder.data = actionDto.MapToCustomAction();
+                
+                UIOnHover uIOnHover = toggle.AddComponent<UIOnHover>();
+                uIOnHover.onHoverEnter += () =>
+                {
+                    actionDescription.text = actionDto.Description;
+                };
+
+                uIOnHover.onHoverExit += () =>
+                {
+                    actionDescription.text = "";
+                };
+                actionToggles.Add(toggle);
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(actionPanel.transform.parent.GetComponent<RectTransform>());
+
             OnInitialized?.Invoke();
             IsInitialized = true;
         }
@@ -201,10 +240,29 @@ namespace Assets.Scripts.MainMenu
 
             AssetManager.Instance.UploadImage(selectedFilePath, null, null);
             selectedFilePath = $"{PlayerPrefs.GetString("username")}/images/{Path.GetFileName(selectedFilePath)}";
-            IDownableCreature character = new(raceInstance, characterName.text, selectedFilePath, characterBio.text)
+            ICreature character;
+            if (isPlayerCharacter.isOn)
             {
-                IsPlayer = isPlayerCharacter.isOn
-            };
+                character = new IDownableCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
+                {
+                    IsPlayer = isPlayerCharacter.isOn
+                };
+            } else {
+                character = new ICreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
+                {
+                    IsPlayer = isPlayerCharacter.isOn
+                };
+            }
+
+            character.CustomActionIds.Clear();
+            character.CustomActions.Clear();
+            foreach (var toggle in actionToggles.Where(x => x.isOn))
+            {
+                CustomBaseAction action = (CustomBaseAction)toggle.GetComponent<DataHolder>().data;
+                character.CustomActionIds.Add(action.Id);
+                character.CustomActions.Add(action);
+            }
+            
             character.SetBaseStats(statValues);
             foreach (var skill in skillInputs.Where(x => x.Value.isOn))
             {
@@ -281,7 +339,7 @@ namespace Assets.Scripts.MainMenu
             characterBio.text = creature.Description;
 
             selectedFilePath = creature.ImagePath;
-            AssetManager.Instance.GetImage(creature.ImagePath, (texture) => characterImage.GetComponent<RawImage>().texture = texture, null);
+            AssetManager.Instance.PreviewImage(creature.ImagePath, (texture) => characterImage.GetComponent<RawImage>().texture = texture, null);
             IClass characterClass = creature.ClassManager.classes.First();
 
             classDropdown.SetValueWithoutNotify(classList.FindIndex(x => x == characterClass.GetType()));
@@ -294,8 +352,6 @@ namespace Assets.Scripts.MainMenu
                 }
             }
 
-            isPlayerCharacter.isOn = creature.IsPlayer;
-
             foreach (var stat in statInputs)
             {
                 if (creature.ModifierManager.BaseAttributes.TryGetValue(stat.Key.Attribute, out int value))
@@ -303,6 +359,17 @@ namespace Assets.Scripts.MainMenu
                     stat.Value.text = (value + 5).ToString();
                 }
             }
+
+            foreach (var toggle in actionToggles)
+            {
+                CustomBaseAction action = (CustomBaseAction)toggle.GetComponent<DataHolder>().data;
+                if (creature.CustomActionIds.Any(id => action.Id == id))
+                {
+                    toggle.isOn = true;
+                }
+            }
+            
+            isPlayerCharacter.isOn = creature.IsPlayer;
         }
     }
 

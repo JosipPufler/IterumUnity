@@ -45,6 +45,10 @@ namespace Iterum.utils
             return this;
         }
 
+        public ActionResultBuilder AmountDamaged(IDamageable target, IEnumerable<DamageResult> damage){
+            return AmountDamaged(new[] { new KeyValuePair<IDamageable, IEnumerable<DamageResult>>(target, damage) });
+        }
+
         public ActionResultBuilder AmountDamaged(IDamageable damageable, DamageResult damage)
         {
             if (actionResult.AmountDamaged.TryGetValue(damageable, out IEnumerable<DamageResult> value))
@@ -101,8 +105,31 @@ namespace Iterum.utils
             return this;
         }
 
+        public ActionResultBuilder AddMessage(string message)
+        {
+            actionResult.ActionMessages.Add(message);
+            return this;
+        }
+
         public ActionResult Build()
         {
+            foreach (var damageResult in actionResult.AmountDamaged)
+            {
+                actionResult.ActionMessages.Add($"{actionResult.Source.Name} dealt {damageResult.Value.Sum(x => x.Amount)} damage to {damageResult.Key.Name}");
+            }
+            foreach (var modifiers in actionResult.AttributesModified)
+            {
+                foreach (var modifierResult in modifiers.Value)
+                {
+                    if (modifierResult.Value > 0)
+                    {
+                        actionResult.ActionMessages.Add($"{actionResult.Source.Name} increased {modifiers.Key.Name}s {modifierResult.Key} by {modifierResult.Value}");
+                    } else if (modifierResult.Value < 0)
+                    {
+                        actionResult.ActionMessages.Add($"{actionResult.Source.Name} lowered {modifiers.Key.Name}s {modifierResult.Key} by {modifierResult.Value}");
+                    }
+                }
+            }
             return actionResult;
         }
     }

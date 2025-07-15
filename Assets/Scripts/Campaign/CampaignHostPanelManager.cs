@@ -1,16 +1,19 @@
-using System;
-using System.Collections.Generic;
+using Assets.DTOs;
 using Assets.Scripts.GameLogic.models.creatures;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.Utils;
 using Assets.Scripts.Utils.Managers;
 using Iterum.DTOs;
 using Iterum.models.creatures;
+using Iterum.models.interfaces;
 using Iterum.Scripts.UI;
 using Iterum.Scripts.Utils;
 using Iterum.Scripts.Utils.Managers;
+using Mirror.Examples.CharacterSelection;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -59,20 +62,42 @@ public class CampaignHostPanelManager : MonoBehaviour
             var entry = Instantiate(creatureEntryPrefab, content.transform);
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = StaticUtils.GetDisplayName(creature);
             entry.GetComponent<Button>().onClick.AddListener(() => {
-                if (GameManager.Instance.SelectedCreature == creature)
+                if (GameManager.Instance.SelectedCreature != null && GameManager.Instance.SelectedCreature.GetType() == creature)
                 {
                     GameManager.Instance.SelectedCreature = null;
                 }
                 else
                 {
-                    GameManager.Instance.SelectedCreature = creature;
+                    GameManager.Instance.SelectedCreature = (ICreature)Activator.CreateInstance(creature);
                 }
             });
         }
 
+        CharacterManager.Instance.GetCharacters(PopulateCustomCharacters, OnError);
+
         btnStartCombat.onClick.AddListener(() => generalManager.StartCombatTurn(true));
 
         FetchAll();
+    }
+
+    void PopulateCustomCharacters(List<CharacterDto> characterDtos) {
+        foreach (var characterDto in characterDtos)
+        {
+            ICreature character = characterDto.MapToCreature();
+            var entry = Instantiate(creatureEntryPrefab, content.transform);
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = character.Name;
+            entry.GetComponent<Button>().onClick.AddListener(() => {
+                if (GameManager.Instance.SelectedCreature != null && GameManager.Instance.SelectedCreature.Name == character.Name)
+                {
+                    GameManager.Instance.SelectedCreature = null;
+                }
+                else
+                {
+                    GameManager.Instance.SelectedCreature = character;
+                }
+            });
+        }
+
     }
 
     void FetchAll() {

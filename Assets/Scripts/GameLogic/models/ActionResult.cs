@@ -17,5 +17,6 @@ namespace Iterum.models
         public Dictionary<IDamageable, IEnumerable<DamageResult>> AmountDamaged { get; set; } = new Dictionary<IDamageable, IEnumerable<DamageResult>>();
         public Dictionary<ICreature, HashSet<StatusEffect>> StatusEffectsApplied { get; set; } = new Dictionary<ICreature, HashSet<StatusEffect>>();
         public Dictionary<ICreature, Dictionary<Attribute, int>> AttributesModified { get; set; } = new Dictionary<ICreature, Dictionary<Attribute, int>>();
+        public List<string> ActionMessages = new();
     }
 }

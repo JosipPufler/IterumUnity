@@ -130,6 +130,7 @@ namespace Assets.Scripts.Utils.Managers
             }
             else
             {
+                var req = request;
                 onFail?.Invoke(request.error);
             }
         }

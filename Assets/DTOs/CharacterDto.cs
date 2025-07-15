@@ -1,4 +1,8 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using Assets.Scripts.Utils;
+using Iterum.models.interfaces;
+using Mirror.Examples.CharacterSelection;
+using Newtonsoft.Json;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Assets.DTOs
 {
@@ -13,6 +17,9 @@ namespace Assets.DTOs
             Data = data;
         }
 
+        public ICreature MapToCreature() {
+            return JsonConvert.DeserializeObject<ICreature>(Data, JsonSerializerSettingsProvider.GetSettings());
+        }
         public string? Id { get; set; }
         public string Name { get; set; }
         public int Level { get; set; }

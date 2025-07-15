@@ -20,6 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Campaign.unity
     guid: 00c1fd875276a1545b35115d635efbc6
+  - enabled: 1
+    path: Assets/Scenes/ActionMaker.unity
+    guid: 5f98c1e5348219d49a10cf2c95b1d993
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

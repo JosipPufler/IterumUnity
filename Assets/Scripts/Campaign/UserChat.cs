@@ -13,9 +13,18 @@ public class UserChat : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Return) && EventSystem.current.currentSelectedGameObject == chatInput.gameObject && !string.IsNullOrEmpty(chatInput.text)) {
-            var entry = Instantiate(chatEntryPrefab, chatContent.transform);
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"[{DateTime.Now.ToString("HH:mm")}] {PlayerPrefs.GetString("username")}: {chatInput.text}";
+            
+             AddEntry($"{PlayerPrefs.GetString("username")}: {chatInput.text}", true);
             chatInput.text = "";
         }
+    }
+
+    public void AddEntry(string content, bool timestamp) {
+        var entry = Instantiate(chatEntryPrefab, chatContent.transform);
+        if (timestamp)
+        {
+            content = $"[{DateTime.Now:HH:mm}] " + content;
+        }
+        entry.transform.Find("Text").GetComponent<TMP_Text>().text = content;
     }
 }

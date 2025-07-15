@@ -1,5 +1,7 @@
+using Assets.Scripts.Campaign;
 using Iterum.models.interfaces;
 using TMPro;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,18 +18,19 @@ public class CampaignMenuManager : MonoBehaviour
     public GameObject actionPanelContent;
     public GameObject actionEntryPrefab;
 
-    ICreature currentCreature;
+    public static CharacterToken currentCreature;
 
     private void Update()
     {
         if (currentCreature != null)
         {
-            statText.text = currentCreature.GetStatString();
+            statText.text = currentCreature.creature.GetStatString();
         }
     }
 
-    public void SetCreature(ICreature creature) {
-        currentCreature = creature;
+    public void SetCreature(CharacterToken token) {
+        ICreature creature = token.creature;
+        currentCreature = token;
 
         foreach (Transform child in inventoryContent.transform)
         {
@@ -39,7 +42,7 @@ public class CampaignMenuManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        foreach (IAction action in currentCreature.GetActions())
+        foreach (IAction action in creature.GetActions())
         {
             var entry = Instantiate(actionEntryPrefab, actionPanelContent.transform);
 
@@ -50,19 +53,17 @@ public class CampaignMenuManager : MonoBehaviour
             entry.SetActive(true);
         }
 
-        foreach (IItem item in currentCreature.Inventory.Keys)
+        foreach (IItem item in creature.Inventory.Keys)
         {
             var entry = Instantiate(inventoryPrefab, inventoryContent.transform);
 
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"{item.Name} x{currentCreature.Inventory[item]}";
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"{item.Name} x{creature.Inventory[item]}";
             Button btnUse = entry.transform.Find("btnUse").GetComponent<Button>();
 
             if (item is IConsumable consumable)
             {
-                // To do
                 btnUse.onClick.AddListener(() => {
-
-                    consumable.Consume(null, null);
+                    CampaignActionManager.Instance.SetAction(consumable.ConsumeAction, currentCreature, (actionInfo) => consumable.Consume(creature.Inventory, actionInfo));
                 });
             }
             else

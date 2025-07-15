@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.enums;
 using Iterum.models.enums;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace Iterum.models.interfaces
         IList<DamageInfo> DamageInfos { get; }
         int ReachModifier { get; }
         IList<WeaponTrait> WeaponTraits { get; }
+        WeaponType WeaponType { get; }
         IList<IAction> WeaponActions { get; }
         WeaponSlotDetails WeaponSlotDetails { get; set; }
         ICreature Creature { get; set; }

@@ -14,7 +14,7 @@ namespace Iterum.models.creatures
         {
             WeaponSet.AddWeapon(new WolfTeeth());
             Inventory.Add(new SmallHealtPotion(), 1);
-            CurrentHp = 0;
+            CurrentHp = MaxHp;
         }
     }
 }

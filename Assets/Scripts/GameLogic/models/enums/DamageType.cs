@@ -1,12 +1,14 @@
-using System.Collections;
+using Assets.Scripts.Utils.converters;
+using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace Iterum.models.enums
 {
     public class DamageType
     {
         public string Name { get; set; }
+        [JsonConverter(typeof(DamageCategoryConverter))]
         public DamageCategory DamageCategory { get; set; }
 
         public static readonly DamageType Piercing = new("Piercing", DamageCategory.Physical);
@@ -33,6 +35,11 @@ namespace Iterum.models.enums
             return new List<DamageType>() { 
                 Piercing, Slashing, Blunt, True, Fire, Ice, Lightning, Infernal, Necrotic, Divine, Acid, Poison, Maddening, 
             };
+        }
+
+        public static DamageType FromName(string name)
+        {
+            return GetDamageTypes().FirstOrDefault(x => x.Name == name);
         }
     }
 }

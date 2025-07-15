@@ -92,7 +92,7 @@ public class GeneralManager : MonoBehaviour
         (GameObject portrait, CharacterToken token) value = portraitOrder.ElementAt(0);
         value.portrait.GetComponent<Outline>().effectColor = Color.white;
         initiativeBar.UpdateScroll();
-        menuManager.SetCreature(value.token.creature);
+        menuManager.SetCreature(value.token);
         value.token.creature.StartTurn();
     }
 
@@ -175,5 +175,9 @@ public class GeneralManager : MonoBehaviour
         {
             HighlightFirst();
         }
+    }
+
+    public CharacterToken GetCurrentToken() {
+        return initiativeOrder.First().token;
     }
 }
