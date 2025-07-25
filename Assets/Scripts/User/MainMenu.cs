@@ -9,6 +9,6 @@ public class MainMenu : MonoBehaviour
 
     private void Start()
     {
-        btnStart.onClick.AddListener(() => SceneManager.LoadScene("Campaign"));
+        //btnStart.onClick.AddListener(() => SceneManager.LoadScene("Campaign"));
     }
 }

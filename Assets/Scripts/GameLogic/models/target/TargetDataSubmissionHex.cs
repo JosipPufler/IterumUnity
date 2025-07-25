@@ -1,13 +1,14 @@
-﻿using UnityEngine;
-
-namespace Assets.Scripts.GameLogic.models.target
+﻿namespace Assets.Scripts.GameLogic.models.target
 {
     public class TargetDataSubmissionHex : TargetDataSubmission
     {
-        public TargetDataSubmissionHex(TargetData targetData, Vector3Int targetable) : base(targetData, targetable)
-        {
+        public TargetDataSubmissionHex() { }
+        public TargetDataSubmissionHex(TargetData targetData, GridCoordinate targetable) : base(targetData){
+            GridCoordinate = targetable;
         }
 
-        public new Vector3Int Targetable => (Vector3Int)base.Targetable;
+        public GridCoordinate GridCoordinate;
+
+        public override object GetTargetable() => GridCoordinate;
     }
 }

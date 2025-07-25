@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Assets.Scripts.Utils.converters;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace Assets.Scripts.Utils
 {
@@ -9,7 +11,14 @@ namespace Assets.Scripts.Utils
             {
                 TypeNameHandling = TypeNameHandling.All,
                 PreserveReferencesHandling = PreserveReferencesHandling.All,
-                Formatting = Formatting.None
+                Formatting = Formatting.None,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Converters = new List<JsonConverter>
+                {
+                    new TargetDataDictionaryConverter(),
+                    new BaseWeaponConverter(),
+                    new BaseConsumableConverter(),
+                }
             };
         }
     }

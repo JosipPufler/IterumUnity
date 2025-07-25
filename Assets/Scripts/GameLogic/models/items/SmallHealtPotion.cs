@@ -1,17 +1,17 @@
-﻿using Iterum.models;
+﻿using Assets.Scripts.GameLogic.models.interfaces;
+using Assets.Scripts.GameLogic.models.target;
+using Iterum.models;
 using Iterum.models.actions;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.Serialization;
 
 namespace Assets.Scripts.GameLogic.models.items
 {
-    public class SmallHealtPotion : IConsumable
+    public class SmallHealtPotion : BaseConsumable
     {
         public SmallHealtPotion()
         {
@@ -21,19 +21,24 @@ namespace Assets.Scripts.GameLogic.models.items
                 } }, Action);
         }
 
-        public Consume ConsumeAction { get; }
+        public override void Initialize() {
+            ConsumeAction.Action = Action;
+        }
 
-        public double Weight { get; } = 1;
+        public override double Weight { get; set; } = 1;
 
-        public string Name { get; } = "Small health potion";
+        public override string Name { get; set; } = "Small health potion";
+
+        public override bool Stackable { get; set; } = true;
 
         static ActionResult Action(ActionInfo actionInfo)
         {
-            ITargetable targetable = (ITargetable)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First().Targetable;
-            if (targetable != null && targetable is ICreature targetCreature)
-            {
-                targetCreature.Heal(DiceUtils.RollMultiple(2, Dice.d4, RollType.Normal).Sum() + 4);
-            }
+            ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
+
+            BaseCreature targetCreature = ((TargetDataSubmissionCreature)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First()).GetToken().creature;
+            int ammountHealed = DiceUtils.RollMultiple(2, Dice.d4, RollType.Normal).Sum() + 4;
+            targetCreature.Heal(ammountHealed);
+            actionResultBuilder.AmountHeald(targetCreature, ammountHealed);
             return null;
         }
     }

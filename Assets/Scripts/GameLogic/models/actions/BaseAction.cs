@@ -1,7 +1,9 @@
 ﻿using Assets.Scripts.GameLogic.models.target;
+using Assets.Scripts.Utils.converters;
 using Iterum.models;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,14 +11,20 @@ using System.Text;
 
 namespace Assets.Scripts.GameLogic.models.actions
 {
-    public abstract class BaseAction : IAction
+    public class BaseAction : IAction
     {
+        [JsonProperty]
+        public virtual string ID { get; set; } = Guid.NewGuid().ToString();
         public virtual string Name { get; set; }
         public virtual string Description { get; set; }
         public virtual int ApCost { get; set; }
         public virtual int MpCost { get; set; }
-        public virtual Dictionary<TargetData, int> TargetTypes { get; set; }
+        [JsonConverter(typeof(TargetDataDictionaryConverter))]
+        public virtual Dictionary<TargetData, int> TargetTypes { get; set; } = new();
+        [JsonIgnore]
         public virtual Func<ActionInfo, ActionResult> Action { get; set; }
+
+        public virtual void Initialize() { }
 
         public virtual int GetNumberOFTargets(IDictionary<TargetData, int> targetTypes)
         {
@@ -28,7 +36,7 @@ namespace Assets.Scripts.GameLogic.models.actions
             return sum;
         }
 
-        public virtual bool CanTakeAction(ICreature actionable) => actionable.CurrentAp >= ApCost && actionable.CurrentMp >= MpCost;
+        public virtual bool CanTakeAction(BaseCreature actionable) => actionable.CurrentAp >= ApCost && actionable.CurrentMp >= MpCost;
 
         public virtual bool ValidateTargets(ActionInfo actionInfo)
         {

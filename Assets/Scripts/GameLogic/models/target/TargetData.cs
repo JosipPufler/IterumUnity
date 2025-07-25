@@ -5,6 +5,11 @@ namespace Assets.Scripts.GameLogic.models
 {
     public class TargetData
     {
+        public TargetData()
+        {
+            
+        }
+
         public TargetData(TargetType targetType, int minDistance, int maxDistance)
         {
             TargetType = targetType;

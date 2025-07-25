@@ -2,10 +2,11 @@
 
 public class CameraController : MonoBehaviour
 {
+    public static CameraController Instance;
+
     public Transform cameraTransform;
 
-    public GameObject? tooltip;
-
+    public Camera Camera;
     public float normalSpeed;
     public float fastSpeed;
     public float movementTime;
@@ -123,11 +124,8 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        transform.position = Vector3.Lerp(transform.position, newPosition, Time.deltaTime * movementTime);
-        transform.rotation = Quaternion.Lerp(transform.rotation, newRotation, Time.deltaTime * movementTime);
-        cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, newZoom, Time.deltaTime * movementTime);
-        cameraTransform.localRotation = Quaternion.Lerp(cameraTransform.localRotation, targetCameraRotation, Time.deltaTime * movementTime);
-
+        transform.SetPositionAndRotation(Vector3.Lerp(transform.position, newPosition, Time.deltaTime * movementTime), Quaternion.Lerp(transform.rotation, newRotation, Time.deltaTime * movementTime));
+        cameraTransform.SetLocalPositionAndRotation(Vector3.Lerp(cameraTransform.localPosition, newZoom, Time.deltaTime * movementTime), Quaternion.Lerp(cameraTransform.localRotation, targetCameraRotation, Time.deltaTime * movementTime));
         transform.position = RoundVector3(transform.position, 0.01f);
         cameraTransform.localPosition = RoundVector3(cameraTransform.localPosition, 0.01f);
 
@@ -166,22 +164,6 @@ public class CameraController : MonoBehaviour
 
         lastPosition = transform.position;
         lastCameraLocalPosition = cameraTransform.localPosition;
-
-        /*Vector3 rigPosition = transform.position;
-        Vector3 desiredCameraWorldPosition = transform.TransformPoint(newZoom);
-
-        Vector3 direction = desiredCameraWorldPosition - rigPosition;
-        float distance = direction.magnitude;
-
-        if (Physics.Raycast(rigPosition, direction.normalized, out RaycastHit hit, distance))
-        {
-            Vector3 hitLocal = transform.InverseTransformPoint(hit.point - direction.normalized * 0.1f);
-            cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, hitLocal, Time.deltaTime * movementTime);
-        }
-        else
-        {
-            cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, newZoom, Time.deltaTime * movementTime);
-        }*/
     }
 
     private Vector3 RoundVector3(Vector3 v, float snapValue)

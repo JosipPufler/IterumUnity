@@ -10,7 +10,7 @@ namespace Assets.Scripts.GameLogic.models.classes
     {
         public Warrior(){}
 
-        public Warrior(ICreature creature) : base(creature)
+        public Warrior(BaseCreature creature) : base(creature)
         {
         }
 
@@ -20,7 +20,7 @@ namespace Assets.Scripts.GameLogic.models.classes
 
         public override Dice HealthDie { get; set; } = Dice.d12;
 
-        public override bool CanJoin(ICreature creature)
+        public override bool CanJoin(BaseCreature creature)
         {
             return creature.ModifierManager.GetAttribute(Attribute.Strength, false) >= 3;
         }

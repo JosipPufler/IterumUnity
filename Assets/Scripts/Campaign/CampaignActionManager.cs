@@ -1,93 +1,106 @@
 ﻿using Assets.Scripts.GameLogic.models;
 using Assets.Scripts.GameLogic.models.actions;
+using Assets.Scripts.GameLogic.models.interfaces;
 using Assets.Scripts.GameLogic.models.target;
+using Assets.Scripts.Network;
+using Assets.Scripts.Utils;
 using Iterum.models;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
-using kcp2k;
 using Mirror;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Assets.Scripts.Campaign
 {
     public class CampaignActionManager : NetworkBehaviour 
     {
-        public BaseAction SelectedAction { get; set; }
+        public IAction SelectedAction { get; set; }
         public GameObject targetPrefab;
         public GameObject content;
         public UserChat userChat;
 
-        public bool LookingForTargets { get; set; }
-        public TargetData CurrentTargetData { get; set; }
+        [SyncVar]
+        public bool LookingForTargets;
+        public TargetData CurrentTargetData;
         public CharacterToken CurrentToken { get; set; }
         private Queue<TargetData> TargetDataQueue { get; set; } = new Queue<TargetData>();
         private ActionInfo ActionInfo { get; set; }
 
         private Func<ActionInfo, ActionResult> callback;
-
+        private BaseConsumable Consumable { get; set; }
         public static CampaignActionManager Instance { get; private set; }
 
-        private void Awake()
+        IList<CharacterToken> HighlightedTokens { get; set; } = new List<CharacterToken>();
+
+        private void Start()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
-            }
-            else
-            {
-                Destroy(gameObject);
-                return;
-            }
+            content = GameObject.FindWithTag("TargetUIContent");
+            userChat = FindAnyObjectByType<UserChat>();
+        }
+
+        public override void OnStartLocalPlayer()
+        {
+            base.OnStartLocalPlayer();
+            
+            Instance = this;
+            enabled = true;
         }
 
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                ClearData();
+                CmdClearData();
             }
         }
 
-        public void SetAction(IAction action, CharacterToken characterToken, Func<ActionInfo, ActionResult> callback = null)
+        private ActionResult DefaultCallback(ActionInfo actionInfo)
         {
-            if (action == null)
-                return;
+            if (SelectedAction is CustomBaseAction customAction)
+            {
+                return customAction.ExecuteAction(actionInfo);
+            }
+            return SelectedAction.ExecuteAction(actionInfo);
+        }
 
-            if (!action.CanTakeAction(characterToken.creature))
+        private ActionResult ConsumableCallback(ActionInfo actionInfo)
+        {
+            return Consumable.Consume(actionInfo.OriginCreature.Inventory, actionInfo);
+        }
+
+        [Command]
+        public void CmdSetAction(string actionGuid) {
+            CurrentToken = TurnOrderManager.Instance.GetCurrentCharacter();
+            if (CurrentToken == null)
             {
                 return;
             }
-
-            ClearData();
-
-            if (callback != null)
+            BaseCreature creature = CurrentToken.creature;
+            Debug.Log(CurrentToken.creature.Name);
+            IAction action = creature.GetActions().FirstOrDefault(x => x.ID == actionGuid);
+            if (action != null)
             {
-                this.callback = callback;
+                SelectedAction = action;
+                callback = DefaultCallback;
             }
             else
             {
-                this.callback = DefaultCallback;
+                Consumable = creature.GetConsumables().FirstOrDefault(x => x.ConsumeAction.ID == actionGuid);
+                if (Consumable == null)
+                {
+                    return;
+                }
+                SelectedAction = Consumable.ConsumeAction;
+                callback = ConsumableCallback;
             }
 
-            if (action is BaseAction baseAction)
-            {
-                SelectedAction = baseAction;
-            }
-            else
-            {
-                return;
-            }
-
-            CurrentToken = characterToken;
-            ActionInfo = new()
-            {
-                OriginCreature = characterToken.creature,
+            ActionInfo = new(){
+                OriginCreature = creature,
             };
             LookingForTargets = true;
 
@@ -95,38 +108,89 @@ namespace Assets.Scripts.Campaign
 
             foreach (var targetData in SelectedAction.TargetTypes)
             {
-                GameObject targetEntry = Instantiate(targetPrefab, content.transform);
-                targetEntry.GetComponent<TMP_Text>().text = $"{targetData.Key.TargetType} {targetData.Key.MinDistance}-{targetData.Key.MaxDistance}: {targetData.Value}";
-
                 for (int i = 0; i < targetData.Value; i++)
                     TargetDataQueue.Enqueue(targetData.Key);
             }
             CurrentTargetData = TargetDataQueue.Dequeue();
+            SetTargetData(CurrentTargetData);
+
+            string currentTargetJson = JsonConvert.SerializeObject(CurrentTargetData, JsonSerializerSettingsProvider.GetSettings());
+            TargetRpcSetCurrentTarget(connectionToClient, currentTargetJson);
+
+            string targetJson = JsonConvert.SerializeObject(SelectedAction.TargetTypes, JsonSerializerSettingsProvider.GetSettings());
+            TargetRpcSetTargetData(connectionToClient, targetJson);
         }
 
+        [TargetRpc]
+        public void TargetRpcSetCurrentTarget(NetworkConnection conn, string currentTargetJson)
+        {
+            CurrentTargetData = JsonConvert.DeserializeObject<TargetData>(currentTargetJson, JsonSerializerSettingsProvider.GetSettings());
+        }
+
+        [TargetRpc]
+        public void TargetRpcSetTargetData(NetworkConnection conn, string targetDataJson) {
+            Dictionary<TargetData, int> targetDataDict = JsonConvert.DeserializeObject<Dictionary<TargetData, int>>(targetDataJson, JsonSerializerSettingsProvider.GetSettings());
+
+            foreach (Transform targetData in content.transform)
+            {
+                Destroy(targetData.gameObject);
+            }
+
+            foreach (var targetData in targetDataDict)
+            {
+                GameObject targetEntry = Instantiate(targetPrefab, content.transform);
+                targetEntry.GetComponent<TMP_Text>().text = $"{targetData.Key.TargetType} {targetData.Key.MinDistance}-{targetData.Key.MaxDistance}: {targetData.Value}";
+            }
+        }
+
+        [Command]
+        private void CmdClearData() {
+            ClearData();
+        }
+
+        [Server]
         private void ClearData()
         {
-            foreach (Transform item in content.transform)
-            {
-                Destroy(item.gameObject);
-            }
             CurrentTargetData = null;
             TargetDataQueue.Clear();
             ActionInfo = null;
             LookingForTargets = false;
             SelectedAction = null;
             callback = null;
+            Consumable = null;
+            CurrentToken = null;
+            ClearTargetHighlights();
+            //RpcClearTargetUi();
         }
 
-        public void SubmitTarget(TargetDataSubmission submission)
+        public void SubmitCreatureTarget(TargetDataSubmissionCreature submission)
         {
-            CmdSubmitTarget(submission.Serialize()); // Send a simplified serializable version
+            CmdSubmitCreatureTarget(JsonConvert.SerializeObject(submission, JsonSerializerSettingsProvider.GetSettings()));
+        }
+
+        public void SubmitHexTarget(TargetDataSubmissionHex submission)
+        {
+            CmdSubmitHexTarget(JsonConvert.SerializeObject(submission, JsonSerializerSettingsProvider.GetSettings()));
         }
 
         [Command]
-        private void CmdSubmitTarget(TargetDataSubmissionDTO dto)
+        private void CmdSubmitCreatureTarget(string targetDataJson) 
         {
-            TargetDataSubmission targetData = dto.Deserialize(); // reconstruct
+            TargetDataSubmissionCreature targetData = JsonConvert.DeserializeObject<TargetDataSubmissionCreature>(targetDataJson, JsonSerializerSettingsProvider.GetSettings());
+
+            ProcessTarget(targetData);
+        }
+
+        [Command]
+        private void CmdSubmitHexTarget(string targetDataJson)
+        {
+            TargetDataSubmissionHex targetData = JsonConvert.DeserializeObject<TargetDataSubmissionHex>(targetDataJson, JsonSerializerSettingsProvider.GetSettings());
+            ProcessTarget(targetData);
+        }
+
+        [Server]
+        private void ProcessTarget(TargetDataSubmission targetData)
+        {
             if (targetData.TargetData.ID != CurrentTargetData.ID) return;
 
             if (!ActionInfo.Targets.ContainsKey(CurrentTargetData))
@@ -136,29 +200,59 @@ namespace Assets.Scripts.Campaign
 
             if (TargetDataQueue.TryDequeue(out var nextTarget))
             {
+                ClearTargetHighlights();
                 CurrentTargetData = nextTarget;
+                SetTargetData(CurrentTargetData);
+                string currentTargetJson = JsonConvert.SerializeObject(CurrentTargetData, JsonSerializerSettingsProvider.GetSettings());
+                TargetRpcSetCurrentTarget(connectionToClient, currentTargetJson);
             }
             else
             {
                 ActionResult result = DefaultCallback(ActionInfo);
-                RpcPrintActionResult(result);
+                string json = JsonConvert.SerializeObject(result.ActionMessages, JsonSerializerSettingsProvider.GetSettings());
+                foreach (CharacterToken token in CampaignGridLayout.Instance.GetCombatants())
+                {
+                    token.creatureJson = JsonConvert.SerializeObject(token.creature, JsonSerializerSettingsProvider.GetSettings());
+                }
+
+                RpcPrintActionResult(json);
                 ClearData();
             }
         }
 
-
-        private ActionResult DefaultCallback(ActionInfo actionInfo) {
-            if (SelectedAction is CustomBaseAction customAction)
+        [Server]
+        private void SetTargetData(TargetData targetData) {
+            if (targetData.TargetType == TargetType.Creature)
             {
-                return customAction.ExecuteAction(actionInfo);
+                Debug.Log(CurrentToken.creature.Name);
+                HighlightedTokens = CampaignGridLayout.Instance.GetTokensInRing(CurrentToken.position, targetData.MinDistance, targetData.MaxDistance).ToList();
+                Debug.Log(HighlightedTokens.Count);
+                foreach (var creatureToken in HighlightedTokens)
+                {
+                    creatureToken.forceOutline = true;
+                }
             }
-            return SelectedAction.ExecuteAction(actionInfo);
+        }
+
+        [Server]
+        private void ClearTargetHighlights() {
+            foreach (var creatureToken in HighlightedTokens)
+            {
+                creatureToken.forceOutline = false;
+            }
+            HighlightedTokens.Clear();
         }
 
         [ClientRpc]
-        private void RpcPrintActionResult(ActionResult result)
+        private void RpcPrintActionResult(string resultJson)
         {
-            result.ActionMessages.ForEach(msg => userChat.AddEntry(msg, false));
+            foreach (Transform child in content.transform)
+            {
+                Destroy(child.gameObject);
+            }
+
+            var result = JsonConvert.DeserializeObject<List<string>>(resultJson, JsonSerializerSettingsProvider.GetSettings());
+            result.ForEach(msg => userChat.AddEntry(msg, false));
         }
     }
 }

@@ -1,11 +1,16 @@
-using System.Collections.Generic;
+﻿using Assets.Scripts;
+using Assets.Scripts.Campaign;
+using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.Utils;
-using Assets.Scripts.Utils.Managers;
+using Assets.Scripts.Utils.converters;
 using Iterum.models.interfaces;
+using Mirror;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 using UnityEngine;
 using Time = UnityEngine.Time;
 
-public class CharacterToken : MonoBehaviour
+public class CharacterToken : NetworkBehaviour
 {
     [Header("Token components")]
     public GameObject top;
@@ -23,15 +28,34 @@ public class CharacterToken : MonoBehaviour
     public float moveSpeed;
     public float rotationSpeed = 360f;
 
+    [SyncVar]
+    public GridCoordinate position;
+
     [Header("Data")]
-    [SerializeField] public ICreature creature;
+    //[SyncVar(hook = nameof(OnCreatureChanged))] 
+    public BaseCreature creature;
+    [SyncVar(hook = nameof(OnCreatureJsonChanged))] public string creatureJson = "";
+
+    [SyncVar] 
     public string controllerName;
+    [SyncVar(hook = nameof(OnOutlineChanged))] 
     public bool forceOutline;
+    [SyncVar(hook = nameof(OnOutlineChanged))]
+    public bool userOutline;
+
+    [SyncVar(hook = nameof(OnPositionChanged))]
+    private Vector3 syncedPosition;
+
+    [SyncVar(hook = nameof(OnRotationChanged))]
+    private Quaternion syncedRotation;
 
     const string outlineColorProperty = "_OutlineColor";
     ToolTipTrigger toolTipTrigger;
     MeshRenderer outlineRenderer;
     MaterialPropertyBlock propBlock;
+
+    [SyncVar(hook = nameof(OnDeadChanged))]
+    public bool IsDead;
 
     enum TokenActionType { MOVE, ROTATE }
 
@@ -45,87 +69,156 @@ public class CharacterToken : MonoBehaviour
     TokenAction currentTokenAction;
     bool hasAction;
 
-    private void Start()
+    bool initialized;
+
+    [SyncVar(hook = nameof(OnTeamChanged))]
+    public Team team;
+
+    public Material playerMaterial, allyMaterial, enemyMaterial, neutralMaterial, deadMaterial;
+
+    void OnTeamChanged(Team _, Team newTeam)
     {
-        if (moveSpeed == 0 || moveSpeed == 4) {
-            moveSpeed = 300f;
+        ApplyTeamStyle(newTeam);
+    }
+
+    void OnDeadChanged(bool _, bool isDead) {
+        if (isDead)
+        {
+            DieVisually();
+        }
+        else
+        {
+            ApplyTeamStyle(team);
+            deadTop.SetActive(false);
+        }
+    }
+
+    public void ApplyTeamStyle(Team team)
+    {
+        Material mat = null;
+        switch (team)
+        {
+            case Team.PLAYER:
+                mat = playerMaterial;
+                outlineColor = Color.blue;
+                break;
+            case Team.ALLY:
+                mat = allyMaterial;
+                outlineColor = Color.green;
+                break;
+            case Team.ENEMY:
+                mat = enemyMaterial;
+                outlineColor = Color.red;
+                break;
+            case Team.NEUTRAL:
+                mat = neutralMaterial;
+                outlineColor = Color.white;
+                break;
+            case Team.DEAD:
+                mat = deadMaterial;
+                outlineColor = Color.gray;
+                break;
         }
 
+        normalBodyMaterial = mat;
+
+        var body = transform.Find("body");
+        if (body && body.TryGetComponent<MeshRenderer>(out var renderer))
+            renderer.material = mat;
+
+        if (body && !body.TryGetComponent<Collider>(out _))
+        {
+            var col = body.gameObject.AddComponent<BoxCollider>();
+            col.size = new Vector3(1, 2, 1);
+        }
+
+        transform.localScale = new Vector3(1.6f, 1f, 1.6f);
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+
+        CampaignGridLayout.Instance.RegisterToken(position, this);
+        ApplyTeamStyle(team);
+        TryInit();
+    }
+
+    public override void OnStartServer()
+    {
+        base.OnStartClient();
+
+        CampaignGridLayout.Instance.RegisterToken(position, this);
+        ApplyTeamStyle(team);
+        InitVisuals();
+    }
+
+    void TryInit()
+    {
+        if (initialized || creature == null) return;
+        InitVisuals();
+
+        initialized = true;
+    }
+
+    void InitVisuals()
+    {
         deadTop.SetActive(false);
         outline.SetActive(false);
-        outlineRenderer = outline.GetComponent<MeshRenderer>();
 
+        outlineRenderer = outline.GetComponent<MeshRenderer>();
         propBlock = new MaterialPropertyBlock();
         outlineRenderer.GetPropertyBlock(propBlock);
         SetOutlineColor(outlineColor);
         outlineRenderer.SetPropertyBlock(propBlock);
-    }
 
-    private void OnMouseEnter()
-    {
-        if (outlineRenderer != null && propBlock != null)
+        if (!toolTipTrigger && isClient)
+            toolTipTrigger = gameObject.AddComponent<ToolTipTrigger>();
+        ApplyTeamStyle(team);
+
+        if (isServer)
         {
-            ShowOutline();
+            return;
         }
-    }
-
-    private void OnMouseExit()
-    {
-        HideOutline();
+        TextureMemorizer.LoadTexture(creature.ImagePath, texture => top.GetComponent<MeshRenderer>().material.mainTexture = texture);
     }
 
     void Update()
     {
-        toolTipTrigger.tooltipText = creature.GetToolTipText();
-
-        if (forceOutline)
+        if (creature == null)
         {
-            ShowOutline();
-        }
-        else 
-        {
-            HideOutline();
+            return;
         }
 
+        IsDead = creature.IsDead;
+
+        if (isClient && toolTipTrigger != null && creature != null)
+            toolTipTrigger.tooltipText = creature.GetToolTipText();
+
+        if (!isServer) return;
+    
         if (!hasAction && actionQueue.Count > 0)
         {
             currentTokenAction = actionQueue.Dequeue();
-            if (currentTokenAction.Type == TokenActionType.ROTATE && actionQueue.TryPeek(out TokenAction result) && result.Type == TokenActionType.MOVE && creature.CurrentAp == 0 && creature.MovementPoints == 0)
-            {
-                return;
-            }
-            if (currentTokenAction.Type == TokenActionType.MOVE && creature.MovementPoints == 0 && !creature.CreateMovementPoint())
-            {
-                return;
-            }
-            else if (currentTokenAction.Type == TokenActionType.MOVE)
-            {
-                creature.MovementPoints--;
-            }
             hasAction = true;
         }
-
         if (!hasAction) return;
 
         switch (currentTokenAction.Type)
         {
-            case TokenActionType.ROTATE:
-                DoRotate();
-                break;
-
-            case TokenActionType.MOVE:
-                DoMove();
-                break;
+            case TokenActionType.ROTATE: DriveRotate(); break;
+            case TokenActionType.MOVE: DriveMove(); break;
         }
     }
 
-    void DoRotate()
+    void DriveRotate()
     {
         transform.rotation = Quaternion.RotateTowards(
             transform.rotation,
             currentTokenAction.TargetRot,
             rotationSpeed * Time.deltaTime);
 
+        syncedRotation = transform.rotation;
         if (Quaternion.Angle(transform.rotation, currentTokenAction.TargetRot) < 0.1f)
         {
             transform.rotation = currentTokenAction.TargetRot;
@@ -133,39 +226,45 @@ public class CharacterToken : MonoBehaviour
         }
     }
 
-    void DoMove()
+    void DriveMove()
     {
         Vector3 current = transform.position;
         Vector3 target = currentTokenAction.TargetPos;
-
+        
         if (current.y < target.y)
         {
             if (Mathf.Abs(current.y - target.y) > 0.001f)
             {
                 Vector3 verticalTarget = new(current.x, target.y, current.z);
                 transform.position = Vector3.MoveTowards(current, verticalTarget, moveSpeed * Time.deltaTime);
+
+                syncedPosition = transform.position;
                 return;
             }
 
             transform.position = Vector3.MoveTowards(current, target, moveSpeed * Time.deltaTime);
 
+            syncedPosition = transform.position;
             if ((transform.position - target).sqrMagnitude < 0.0001f)
             {
                 transform.position = target;
                 hasAction = false;
             }
         }
-        else 
+        else
         {
             if (Mathf.Abs(current.x - target.x) > 0.001f || Mathf.Abs(current.z - target.z) > 0.001f)
             {
                 Vector3 horizontalTarget = new(target.x, current.y, target.z);
                 transform.position = Vector3.MoveTowards(current, horizontalTarget, moveSpeed * Time.deltaTime);
+
+                syncedPosition = transform.position;
                 return;
             }
 
             transform.position = Vector3.MoveTowards(current, target, moveSpeed * Time.deltaTime);
 
+            syncedPosition = transform.position;
             if ((transform.position - target).sqrMagnitude < 0.0001f)
             {
                 transform.position = target;
@@ -174,89 +273,107 @@ public class CharacterToken : MonoBehaviour
         }
     }
 
-    public void SetLookRotation(Vector3 direction)
-    {
-        if (direction == Vector3.zero) return;
-
-        actionQueue.Enqueue(new TokenAction
-        {
-            Type = TokenActionType.ROTATE,
-            TargetRot = Quaternion.LookRotation(direction, Vector3.up)
-        });
-    }
-
-    public void MoveToken(Vector3 location) {
-        actionQueue.Enqueue(new TokenAction
-        {
-            Type = TokenActionType.MOVE,
-            TargetPos = location
-        });
-    }
-
-    public void SetCreature(ICreature creature)
-    {
-        if (toolTipTrigger == null)
-        {
-            toolTipTrigger = gameObject.AddComponent<ToolTipTrigger>();
-        }
-        this.creature = creature;
-        toolTipTrigger.tooltipText = creature.GetToolTipText();
-        if (TextureMemorizer.textures.TryGetValue(creature.ImagePath, out Texture texture))
-        {
-            SetTexture(texture);
-            return;
-        }
-
-        Texture2D texture2d = Resources.Load<Texture2D>(creature.ImagePath);
-
-        if (texture2d == null)
-        {
-            AssetManager.Instance.PreviewImage(creature.ImagePath, SetTexture, error => Debug.Log(error));
-        }
-        else
-        {
-            SetTexture(texture2d);
-        }
-    }
-
-    private void SetTexture(Texture texture) {
-        Transform top = gameObject.transform.Find("top");
-        if (top == null)
-        {
-            Debug.LogError("Child 'top' not found!");
-            return;
-        }
-
-        top.GetComponent<Renderer>().material.mainTexture = texture;
-        TextureMemorizer.textures[creature.ImagePath] = texture;
-        gameObject.SetActive(true);
-    }
-
-    public void Die() 
-    {
-        creature.IsDead = true;
-        body.GetComponent<MeshRenderer>().material = deadBodyMaterial;
+    void DieVisually() {
         deadTop.SetActive(true);
+        var body = transform.Find("body");
+        if (body && body.TryGetComponent<MeshRenderer>(out var renderer))
+            renderer.material = deadBodyMaterial;
     }
 
-    public void Undie()
+    public void QueueRotate(Vector3 direction)
     {
-        creature.IsDead = false;
-        deadTop.SetActive(false);
-        body.GetComponent<MeshRenderer>().material = normalBodyMaterial;
+        if (!isOwned || direction == Vector3.zero) return;
+        CmdQueueRotate(direction);
     }
 
-    public void ShowOutline() {
-        outline.SetActive(true);
+    [Command]
+    void CmdQueueRotate(Vector3 direction)
+    {
+        actionQueue.Enqueue(new TokenAction { Type = TokenActionType.ROTATE, TargetRot = Quaternion.LookRotation(direction, Vector3.up) });
     }
 
-    public void HideOutline() { 
-        outline.SetActive(false);
+    public void QueueMove(Vector3 worldPos)
+    {
+        if (!isOwned) return;
+        CmdQueueMove(worldPos);
     }
 
-    public void SetOutlineColor(Color color) {
+    [Command]
+    void CmdQueueMove(Vector3 pos)
+    {
+        if (creature.MovementPoints == 0 && !creature.CreateMovementPoint()) {
+            return;
+        }
+        creature.MovementPoints--;
+        actionQueue.Enqueue(new TokenAction { Type = TokenActionType.MOVE, TargetPos = pos });
+        creatureJson = JsonConvert.SerializeObject(creature, JsonSerializerSettingsProvider.GetSettings());
+    }
+
+    void ShowOutline() => outline.SetActive(true);
+    void HideOutline() => outline.SetActive(false);
+
+    void SetOutlineColor(Color color)
+    {
         outlineColor = color;
         propBlock.SetColor(outlineColorProperty, outlineColor);
         outlineRenderer.SetPropertyBlock(propBlock);
+    }
+
+    private void OnPositionChanged(Vector3 _, Vector3 newPos)
+    {
+        transform.position = newPos;
+    }
+
+    private void OnRotationChanged(Quaternion _, Quaternion newRot)
+    {
+        transform.rotation = newRot;
+    }
+
+    private void OnOutlineChanged(bool _, bool _2) {
+        if (!userOutline && !forceOutline)
+        {
+            HideOutline();
+        }
+        else if (userOutline || forceOutline)
+        {
+            ShowOutline();
+        }
+    }
+
+    void OnCreatureJsonChanged(string _, string newJson)
+    {
+        Debug.Log("[Client] Received creature JSON: " + newJson);
+
+        if (!string.IsNullOrWhiteSpace(newJson))
+        {
+            if (ConverterUtils.TryParseCharacter(newJson, out DownableCreature character))
+            {
+                creature = character;
+                creature?.InitHelpers(default);
+            }
+            else if (ConverterUtils.TryParseCreature(newJson, out BaseCreature baseCreature))
+            {
+                creature = baseCreature;
+                creature?.InitHelpers(default);
+            }
+            else
+            {
+                Debug.Log("[Client] Could not parse JSON");
+                return;
+            }
+
+            if (!initialized)
+            {
+                InitVisuals();
+                initialized = true;
+            }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (CampaignGridLayout.Instance == null) return;
+
+        CampaignGridLayout.Instance.UnregisterToken(position, this);
     }
 }

@@ -1,22 +1,39 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Assets.Scripts;
 using Assets.Scripts.Campaign;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.GameLogic.models.target;
 using Assets.Scripts.Map;
+using Assets.Scripts.Network;
 using Iterum.DTOs;
-using Iterum.models.interfaces;
 using Iterum.Scripts.UI;
+using Mirror;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class CampaignGridLayout : HexGridLayout
 {
+    private static CampaignGridLayout _instance;
+    public static CampaignGridLayout Instance => _instance;
+
+    private void Awake()
+    {
+        if (_instance == null)
+            _instance = this;
+        else
+            Destroy(gameObject); // Optional: Enforce singleton
+    }
+
     private const string TokenTag = "Token";
     private const string HexTag = "Hex";
+    public MapDto currentMap;
+    public bool MapLoaded { get; set; } = false;
+
     public GeneralManager manager;
-    public CampaignActionManager actionManager;
+    //public CampaignActionManager actionManager;
+    public GameObject hexPrefab;
 
     [Header("Token")]
     public GameObject tokenPrefab;
@@ -28,13 +45,13 @@ public class CampaignGridLayout : HexGridLayout
 
     private readonly Dictionary<Team, List<CharacterToken>> creatures = new();
 
-    private static readonly Dictionary<Vector3Int, CharacterToken> characters = new();
+    private static readonly Dictionary<GridCoordinate, CharacterToken> characters = new();
     private CharacterToken selectedToken;
 
-    private readonly Dictionary<Vector3Int, HexRenderer> selectedHexes = new();
+    private readonly Dictionary<GridCoordinate, HexRenderer> selectedHexes = new();
     private bool movin = false;
     private int currentMoveNumber = 0;
-    private Vector3Int lastHex;
+    private GridCoordinate lastHex;
 
     public static List<HexRenderer> highlightedRenderers = new();
     public static List<CharacterToken> highlightedCharacters = new();
@@ -49,6 +66,8 @@ public class CampaignGridLayout : HexGridLayout
 
     private void Update()
     {
+        if (!NetworkClient.localPlayer) return;
+
         // Place on top
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
@@ -65,11 +84,22 @@ public class CampaignGridLayout : HexGridLayout
                         {
                             if (pair.Value == hitObject)
                             {
-                                if (actionManager.LookingForTargets && IsWithinRange(GetTokenCoordinates(actionManager.CurrentToken), pair.Key, actionManager.CurrentTargetData.MinDistance, actionManager.CurrentTargetData.MaxDistance)) {
-                                    actionManager.SubmitTargetData(new TargetDataSubmissionHex(actionManager.CurrentTargetData, pair.Key));
+                                Debug.Log($"{pair.Key.x} {pair.Key.y} {pair.Key.z}");
+
+                                if (CampaignActionManager.Instance.LookingForTargets && IsWithinRange(GetTokenCoordinates(CampaignActionManager.Instance.CurrentToken), pair.Key, CampaignActionManager.Instance.CurrentTargetData.MinDistance, CampaignActionManager.Instance.CurrentTargetData.MaxDistance)) {
+                                    CampaignActionManager.Instance.SubmitHexTarget(new TargetDataSubmissionHex(CampaignActionManager.Instance.CurrentTargetData, pair.Key));
                                 }
-                                Vector3Int aboveKey = new(pair.Key.x, pair.Key.y + 1, pair.Key.z);
-                                TryAddToken(aboveKey);
+                                GridCoordinate aboveKey = new(pair.Key.x, pair.Key.y + 1, pair.Key.z);
+                                if (!CampaignPlayer.LocalPlayer) return;
+
+                                if (GameManager.Instance.SelectedCharacter != null)
+                                {
+                                    CampaignPlayer.LocalPlayer.TrySpawnCharacter(GameManager.Instance.SelectedCharacter, aboveKey, CampaignPlayer.LocalPlayer.isCampaignHost ? GameManager.Instance.Team : Team.PLAYER);
+                                }
+                                else if (GameManager.Instance.SelectedCreature != null)
+                                {
+                                    CampaignPlayer.LocalPlayer.TrySpawnCreature(GameManager.Instance.SelectedCreature.GetType().Name, aboveKey, CampaignPlayer.LocalPlayer.isCampaignHost ? GameManager.Instance.Team : Team.ALLY);
+                                }
                                 break;
                             }
                         }
@@ -78,10 +108,10 @@ public class CampaignGridLayout : HexGridLayout
 
                 if (hitObject.CompareTag(TokenTag))
                 {
-                    CharacterToken characterToken = hitObject.GetComponent<CharacterToken>();
-                    Vector3Int tokenCoords = GetTokenCoordinates(characterToken);
+                    CharacterToken characterToken = hitObject.GetComponentInParent<CharacterToken>();
+                    GridCoordinate tokenCoords = GetTokenCoordinates(characterToken);
 
-                    if (IsTokenCurrentTurn(characterToken))
+                    if (characterToken.isOwned && IsTokenCurrentTurn(characterToken))
                     {
                         selectedToken = characterToken;
                         movin = true;
@@ -89,9 +119,9 @@ public class CampaignGridLayout : HexGridLayout
                         lastHex = tokenCoords;
                     }
 
-                    if (actionManager.LookingForTargets && IsWithinRange(GetTokenCoordinates(actionManager.CurrentToken), tokenCoords, actionManager.CurrentTargetData.MinDistance, actionManager.CurrentTargetData.MaxDistance))
+                    if (CampaignActionManager.Instance.LookingForTargets && IsWithinRange(GetTokenCoordinates(manager.GetCurrentToken()), tokenCoords, CampaignActionManager.Instance.CurrentTargetData.MinDistance, CampaignActionManager.Instance.CurrentTargetData.MaxDistance))
                     {
-                        actionManager.SubmitTargetData(new TargetDataSubmissionCreature(actionManager.CurrentTargetData, characterToken.creature));
+                        CampaignActionManager.Instance.SubmitCreatureTarget(new TargetDataSubmissionCreature(CampaignActionManager.Instance.CurrentTargetData, characterToken.GetComponent<NetworkIdentity>().netId));
                         RotateTokenToward(manager.GetCurrentToken(), tokenCoords);
                     }
                 }
@@ -114,7 +144,7 @@ public class CampaignGridLayout : HexGridLayout
                         {
                             if (pair.Value == hitObject)
                             {
-                                Vector3Int currentKey = pair.Key;
+                                GridCoordinate currentKey = pair.Key;
                                 if (movin)
                                 {
                                     if (currentMoveNumber == selectedToken.creature.EffectiveMovementPoints || selectedHexes.ContainsKey(currentKey))
@@ -123,7 +153,7 @@ public class CampaignGridLayout : HexGridLayout
                                     }
                                     if (!AreAdjacent(lastHex, currentKey))
                                     {
-                                        Debug.Log("Not close");
+                                        Debug.Log($"Not close {lastHex}, {currentKey}");
                                         break;
                                     }
                                     if (selectedToken == null || !IsTokenCurrentTurn(selectedToken))
@@ -154,7 +184,7 @@ public class CampaignGridLayout : HexGridLayout
         }
 
         if (Input.GetMouseButtonUp(0) && movin) {
-            foreach (Vector3Int hex in selectedHexes.Keys)
+            foreach (GridCoordinate hex in selectedHexes.Keys)
             {
                 var aboveHex = hex;
                 aboveHex.y += 1;
@@ -168,11 +198,7 @@ public class CampaignGridLayout : HexGridLayout
 
     private bool IsTokenCurrentTurn(CharacterToken characterToken)
     {
-        if (manager.initiativeOrder == null || manager.initiativeOrder.Count == 0)
-        {
-            return false;
-        }
-        return manager.initiativeOrder.First().token.creature == characterToken.creature;
+        return manager.GetCurrentToken() != null && manager.GetCurrentToken().creature == characterToken.creature;
     }
 
     private void ResetMovement()
@@ -186,24 +212,56 @@ public class CampaignGridLayout : HexGridLayout
         currentMoveNumber = 0;
     }
 
-    private void MoveToken(CharacterToken selectedToken, Vector3Int aboveKey)
+    private void MoveToken(CharacterToken selectedToken, GridCoordinate aboveKey)
     {
         if (characters.TryGetValue(aboveKey, out CharacterToken _))
         {
             return;
         }
-        Vector3Int from = GetTokenCoordinates(selectedToken);
+        GridCoordinate from = GetTokenCoordinates(selectedToken);
         characters.Remove(from);
         characters[aboveKey] = selectedToken;
-        selectedToken.MoveToken(GetPositionForTokenInRealWorld(aboveKey, selectedToken.gameObject));
+        selectedToken.QueueMove(GetPositionForTokenInRealWorld(aboveKey, selectedToken.gameObject));
     }
 
-    private static Vector3Int GetTokenCoordinates(CharacterToken selectedToken)
+    private static GridCoordinate GetTokenCoordinates(CharacterToken selectedToken)
     {
         return characters.First(x => x.Value == selectedToken).Key;
     }
 
-    private void TryAddToken(Vector3Int aboveKey)
+    public void RegisterToken(GridCoordinate hexKey, CharacterToken token)
+    {
+        if (characters.ContainsKey(hexKey))
+        {
+            Debug.LogWarning($"Token already registered at {hexKey}");
+            return;
+        }
+
+        characters[hexKey] = token;
+
+        if (!creatures.TryGetValue(token.team, out var teamList))
+        {
+            teamList = new List<CharacterToken>();
+            creatures[token.team] = teamList;
+        }
+
+        teamList.Add(token);
+        //manager.UpdateInitiative(token);
+    }
+
+    public void UnregisterToken(GridCoordinate hexKey, CharacterToken token)
+    {
+        characters.Remove(hexKey);
+
+        if (creatures.TryGetValue(token.team, out var list))
+        {
+            list.Remove(token);
+            if (list.Count == 0)
+                creatures.Remove(token.team);
+        }
+    }
+
+    /*private void TryAddToken(Vector3Int aboveKey)
     {
         if (characters.TryGetValue(aboveKey, out CharacterToken _))
         {
@@ -255,14 +313,14 @@ public class CampaignGridLayout : HexGridLayout
             boxCollider.size = new Vector3(100, 30, 100);
         }
 
-        characterToken.SetCreature(GameManager.Instance.SelectedCreature);
+        characterToken.creature = GameManager.Instance.SelectedCreature;
         characterToken.normalBodyMaterial = currentMaterial;
         manager.UpdateInitiative(characterToken);
 
         characters[aboveKey] = characterToken;
-    }
+    }*/
 
-    private Vector3 GetPositionForTokenInRealWorld(Vector3Int aboveKey, GameObject token)
+    public Vector3 GetPositionForTokenInRealWorld(GridCoordinate aboveKey, GameObject token)
     {
         float bodyHeight = token.transform.Find("outlineBody").GetComponent<MeshRenderer>().bounds.size.y;
 
@@ -271,41 +329,62 @@ public class CampaignGridLayout : HexGridLayout
         return vector3;
     }
 
-    public void LoadMap(MapDto mapDto) {
+    [Server]
+    public void LoadMap(MapDto mapDto)
+    {
         foreach (var hex in grid.Values)
-        {
             Destroy(hex);
-        }
 
         grid.Clear();
 
         isFlatTopped = mapDto.IsFlatTopped;
-        gridSize.x = mapDto.maxX;
-        gridSize.y = mapDto.maxY;
+        gridSize.x = mapDto.MaxX;
+        gridSize.y = mapDto.MaxY;
 
         foreach (var hex in mapDto.Hexes)
-        {
-            TryAddHex(new Vector3Int(hex.X, hex.Y, hex.Z));
-        }
+            TryAddHex(new GridCoordinate(hex.X, hex.Y, hex.Z));
+
+        MapLoaded = true;
     }
 
-    protected override void TryAddHex(Vector3Int key)
+    [Server]
+    public override void TryAddHex(GridCoordinate key)
     {
         if (!grid.ContainsKey(key))
         {
-            GameObject tile = new($"Hex {key.x},{key.y}, ", typeof(HexRenderer));
+            GameObject tile = Instantiate(hexPrefab);
             tile.transform.position = GetPositionForHexFromCoordinate(new Vector2Int(key.x, key.z));
             tile.tag = "Hex";
 
-            HexRenderer r = tile.GetComponent<HexRenderer>();
+            HexRenderer hexRenderer = tile.GetComponent<HexRenderer>();
+            hexRenderer.positon = key;
             if (key.y == 0)
-                r.Initialize(hexMaterial, highlightMaterial, targetMaterial, 0, outerSize-5, height * 2 + 1000, isFlatTopped, -1000);
+                hexRenderer.Initialize(hexMaterial, highlightMaterial, targetMaterial, 0, outerSize-5, height * 2 + 1000, isFlatTopped, -1000);
             else
-                r.Initialize(hexMaterial, highlightMaterial, targetMaterial, 0, outerSize-5, height * 2, isFlatTopped, key.y * height * 2);
+                hexRenderer.Initialize(hexMaterial, highlightMaterial, targetMaterial, 0, outerSize-5, height * 2, isFlatTopped, key.y * height * 2);
 
             tile.transform.SetParent(transform, true);
             grid[key] = tile;
+
+            if (NetworkServer.active)
+            {
+                Debug.Log($"Spawning tile {key.x}, {key.y}, {key.z}");
+                NetworkServer.Spawn(tile);
+            }
         }
+    }
+
+    [Client]
+    public void RegisterHex(GridCoordinate coord, GameObject hex)
+    {
+        if (!grid.ContainsKey(coord))
+            grid.Add(coord, hex);
+    }
+
+    [Client]
+    public void UnregisterHex(GridCoordinate coord)
+    {
+        grid.Remove(coord);
     }
 
     public List<CharacterToken> GetCombatants() {
@@ -329,29 +408,29 @@ public class CampaignGridLayout : HexGridLayout
         return Team.DEAD;
     }
 
-    public void RotateTokenToward(CharacterToken token, Vector3Int to)
+    public void RotateTokenToward(CharacterToken token, GridCoordinate to)
     {
-        Vector3Int from = characters.First(x => x.Value == token).Key;
+        GridCoordinate from = characters.First(x => x.Value == token).Key;
 
         Vector3 flatFrom = GetPositionForHexFromCoordinate(new Vector2Int(from.x, from.z));
         Vector3 flatTo = GetPositionForHexFromCoordinate(new Vector2Int(to.x, to.z));
 
         Vector3 direction = (flatTo - flatFrom).normalized;
 
-        token.SetLookRotation(direction);
+        token.QueueRotate(direction);
     }
 
-    public static IEnumerable<CharacterToken> GetTokensInRing(Vector3Int center, int minDist, int maxDist)
+    public IEnumerable<CharacterToken> GetTokensInRing(GridCoordinate center, int minDist, int maxDist)
     {
         foreach (var kv in characters)
         {
-            int d = CubeDistance(kv.Key, center);
-            if (d > minDist && d <= maxDist)
+            int distance = CubeDistance(kv.Key, center);
+            if (distance >= minDist && distance <= maxDist)
                 yield return kv.Value;
         }
     }
 
-    public static IEnumerable<HexRenderer> HighlightHexesInRing(Vector3Int center, int minDist, int maxDist)
+    public IEnumerable<HexRenderer> HighlightHexesInRing(GridCoordinate center, int minDist, int maxDist)
     {
         List<HexRenderer> result = new();
         foreach (var renderer in highlightedRenderers)
@@ -373,7 +452,7 @@ public class CampaignGridLayout : HexGridLayout
         return result;
     }
 
-    public static IEnumerable<HexRenderer> HighlightCharactersInRing(Vector3Int center, int minDist, int maxDist)
+    public IEnumerable<HexRenderer> HighlightCharactersInRing(GridCoordinate center, int minDist, int maxDist)
     {
         List<HexRenderer> result = new();
         foreach (var renderer in highlightedRenderers)

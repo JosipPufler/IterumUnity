@@ -5,33 +5,18 @@ using Iterum.Scripts.Map;
 namespace Iterum.DTOs
 {
     [Serializable]
-    public class MapDto
+    public struct MapDto
     {
-        public string? Id { get; set; }
-        public string Name { get; set; }
-        public List<Hex> Hexes { get; set; }
+        public string? Id;
+        public string Name;
+        public List<Hex> Hexes;
         public bool IsFlatTopped;
-        public int maxX;
-        public int maxY;
+        public int MaxX;
+        public int MaxY;
 
-        public MapDto()
+        public readonly bool IsValid()
         {
-            
-        }
-
-        public MapDto(string name, List<Hex> hexs, string id, bool isFlatTopped)
-        {
-            Name = name;
-            Hexes = hexs;
-            Id = id;
-            IsFlatTopped = isFlatTopped;
-        }
-
-        public MapDto(string name, List<Hex> hexs, bool isFlatTopped)
-        {
-            Name = name;
-            Hexes = hexs;
-            IsFlatTopped = isFlatTopped;
+            return !string.IsNullOrEmpty(Name) && Hexes != null && Hexes.Count > 0 && MaxX > 0 && MaxY > 0;
         }
     }
 }

@@ -10,7 +10,10 @@ public class ActionEntryData : MonoBehaviour
 
     private void Start()
     {
-        GetComponent<Button>().onClick.AddListener(() => CampaignActionManager.Instance.SetAction(action, CampaignMenuManager.currentCreature));
+        GetComponent<Button>().onClick.AddListener(() => {
+            Debug.Log(action.ID); 
+            CampaignActionManager.Instance.CmdSetAction(action.ID);
+        });
     }
 
     public void SetAction(IAction action) { 

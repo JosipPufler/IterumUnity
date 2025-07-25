@@ -17,21 +17,21 @@ namespace Assets.Scripts.Map
         public Material highlightMaterial;
         public Material targetMaterial;
 
-        protected static readonly Dictionary<Vector3Int, GameObject> grid = new();
+        public readonly Dictionary<GridCoordinate, GameObject> grid = new();
         protected static readonly Vector2Int[] axialDirs = {
             new(+1,  0), new(+1, -1), new( 0, -1),
             new(-1,  0), new(-1, +1), new( 0, +1)
         };
 
 
-        protected virtual void TryAddHex(Vector3Int key)
+        public virtual void TryAddHex(GridCoordinate key)
         {
             if (key.z > gridSize.y - 1 || key.z < 0 || key.x > gridSize.x - 1 || key.x < 0)
             {
                 return;
             }
 
-            if (!grid.TryGetValue(key, out _))
+            if (!grid.ContainsKey(key))
             {
                 GameObject tile = new($"Hex {key.x},{key.y}, ", typeof(HexRenderer));
                 tile.transform.position = GetPositionForHexFromCoordinate(new Vector2Int(key.x, key.z));
@@ -99,17 +99,18 @@ namespace Assets.Scripts.Map
             if (isFlatTopped)
             {
                 q = offset.x;
-                r = offset.y - (offset.x >> 1);
+                r = offset.y - (offset.x - (offset.x & 1)) / 2;
             }
             else
             {
-                q = offset.x - (offset.y >> 1);
+                q = offset.x - (offset.y - (offset.y & 1)) / 2;
                 r = offset.y;
             }
+
             return new Vector2Int(q, r);
         }
 
-        public bool AreAdjacent(Vector3Int a, Vector3Int b)
+        public bool AreAdjacent(GridCoordinate a, GridCoordinate b)
         {
             if (Mathf.Abs(a.y - b.y) > 1) return false;
 
@@ -123,7 +124,7 @@ namespace Assets.Scripts.Map
             return false;
         }
 
-        public bool IsWithinRange(Vector3Int a, Vector3Int b, int minDist, int maxDist)
+        public bool IsWithinRange(GridCoordinate a, GridCoordinate b, int minDist, int maxDist)
         {
             if (Mathf.Abs(a.y - b.y) > maxDist)
                 return false;
@@ -136,7 +137,7 @@ namespace Assets.Scripts.Map
             return distance >= minDist && distance <= maxDist;
         }
 
-        protected static int CubeDistance(Vector3Int a, Vector3Int b)
+        protected static int CubeDistance(GridCoordinate a, GridCoordinate b)
         {
             return CubeDistance(new Vector2Int(a.x, a.z), new Vector2Int(b.x, b.z));
         }

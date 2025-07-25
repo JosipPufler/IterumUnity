@@ -1,7 +1,10 @@
 using Assets.Scripts.Campaign;
+using Assets.Scripts.GameLogic.models.interfaces;
+using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Mirror;
+using System.Linq;
 using TMPro;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +12,10 @@ public class CampaignMenuManager : MonoBehaviour
 {
     [Header("Stats")]
     public TMP_Text statText;
+
+    [Header("Skills")]
+    public GameObject skillContent;
+    public GameObject skillHolderPrefab;
 
     [Header("Inventory")]
     public GameObject inventoryContent;
@@ -29,8 +36,10 @@ public class CampaignMenuManager : MonoBehaviour
     }
 
     public void SetCreature(CharacterToken token) {
-        ICreature creature = token.creature;
+        BaseCreature creature = token.creature;
         currentCreature = token;
+
+        InitSkills(creature);
 
         foreach (Transform child in inventoryContent.transform)
         {
@@ -53,23 +62,63 @@ public class CampaignMenuManager : MonoBehaviour
             entry.SetActive(true);
         }
 
-        foreach (IItem item in creature.Inventory.Keys)
+        var groupedItems = creature.Inventory
+            .GroupBy(item => new { itemName = item.Name, stackable = item.Stackable })
+            .ToList();
+
+        foreach (var group in groupedItems)
         {
+            var firstItem = group.First();
+            int count = group.Count();
+
             var entry = Instantiate(inventoryPrefab, inventoryContent.transform);
 
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = $"{item.Name} x{creature.Inventory[item]}";
+            string displayName = firstItem.Stackable && count > 1
+                ? $"{firstItem.Name} x{count}"
+                : firstItem.Name;
+
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = displayName;
+
             Button btnUse = entry.transform.Find("btnUse").GetComponent<Button>();
 
-            if (item is IConsumable consumable)
+            if (firstItem is BaseConsumable consumable)
             {
-                btnUse.onClick.AddListener(() => {
-                    CampaignActionManager.Instance.SetAction(consumable.ConsumeAction, currentCreature, (actionInfo) => consumable.Consume(creature.Inventory, actionInfo));
+                btnUse.onClick.AddListener(() =>
+                {
+                    CampaignActionManager.Instance.CmdSetAction(consumable.ConsumeAction.ID);
                 });
             }
             else
             {
                 btnUse.gameObject.SetActive(false);
             }
+        }
+    }
+
+    public void InitSkills(BaseCreature creature) {
+        foreach (Transform child in skillContent.transform)
+        {
+            Destroy(child.gameObject);
+        }
+        uint netId = currentCreature.GetComponent<NetworkIdentity>().netId;
+        foreach (var skill in Skill.GetAllSkills())
+        {
+            GameObject skillHolder = Instantiate(skillHolderPrefab, skillContent.transform);
+
+            skillHolder.transform.Find("SkillName").GetComponent<TMP_Text>().text = skill.Name;
+            string modifierText;
+            int modifier = creature.GetSkillModifier(skill);
+            if (modifier >= 0)
+            {
+                modifierText = $"(+{modifier})";
+            }
+            else
+            {
+                modifierText = $"({modifier})";
+            }
+            skillHolder.transform.Find("ModifierBonus").GetComponent<TMP_Text>().text = modifierText;
+
+            skillHolder.GetComponent<Button>().onClick.AddListener(() => CampaignPlayer.LocalPlayer.CmdRollSkillcheck(netId, skill.Attribute));
         }
     }
 }

@@ -6,7 +6,7 @@ namespace Iterum.models
 {
     public class ActionInfo
     {
-        public ICreature OriginCreature { get; set; }
+        public BaseCreature OriginCreature { get; set; }
         public Dictionary<TargetData, List<TargetDataSubmission>> Targets { get; set; } = new();
     }
 }

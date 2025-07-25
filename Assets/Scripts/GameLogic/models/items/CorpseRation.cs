@@ -1,16 +1,21 @@
 using Assets.Scripts.GameLogic.models;
+using Assets.Scripts.GameLogic.models.interfaces;
+using Assets.Scripts.GameLogic.models.target;
 using Assets.Scripts.Utils;
 using Iterum.models.actions;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Iterum.utils;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Iterum.models.items
 {
-    public class CorpseRation : IConsumable
+    public class CorpseRation : BaseConsumable
     {
-        public CorpseRation(ICreature creature) { 
+        private static int HealAmmount = 10;
+
+        public CorpseRation(BaseCreature creature) { 
             this.creature = creature;
             Name = $"{StaticUtils.GetName(creature.Race.GetType())} ration";
 
@@ -22,20 +27,18 @@ namespace Iterum.models.items
 
         static ActionResult Action(ActionInfo actionInfo)
         {
-            ITargetable targetable = (ITargetable)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First().Targetable;
-            if (targetable != null && targetable is ICreature targetCreature)
-            {
-                targetCreature.Heal(10);
-            }
-            return null;
+            ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
+
+            BaseCreature targetable = ((TargetDataSubmissionCreature)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First()).GetToken().creature;
+            targetable.Heal(HealAmmount);
+            actionResultBuilder.AmountHeald(targetable, HealAmmount);
+            return actionResultBuilder.Build();
         }
 
-        private ICreature creature;
+        private BaseCreature creature;
 
-        public double Weight { get; } = 2;
+        public override double Weight { get; set; } = 2;
 
-        public string Name { get; }
-
-        public Consume ConsumeAction { get; }
+        public override bool Stackable { get; set; } = false;
     }
 }

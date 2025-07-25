@@ -15,6 +15,14 @@ namespace Assets.Scripts.Map
 
         void OnEnable()
         {
+            if (gridSize.x <= 0)
+            {
+                gridSize.x = 10;
+            }
+            if (gridSize.y <= 0)
+            {
+                gridSize.y = 10;
+            }
             ifX.text = gridSize.x.ToString();
             ifY.text = gridSize.y.ToString();
             if (!isFlatTopped)
@@ -52,11 +60,11 @@ namespace Assets.Scripts.Map
             });
 
             LayoutGrid();
-            if (GameManager.Instance != null && GameManager.Instance.SelectedMap != null && GameManager.Instance.SelectedMap.Hexes != null)
+            if (GameManager.Instance != null && GameManager.Instance.SelectedMap.IsValid() && GameManager.Instance.SelectedMap.Hexes != null)
             {
                 foreach (Hex hex in GameManager.Instance.SelectedMap.Hexes)
                 {
-                    TryAddHex(new Vector3Int(hex.X, hex.Y, hex.Z));
+                    TryAddHex(new GridCoordinate(hex.X, hex.Y, hex.Z));
                 }
             }
         }

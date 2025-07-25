@@ -2,6 +2,7 @@ using Assets.Scripts.Utils.converters;
 using Iterum.models.enums;
 using Iterum.utils;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace Iterum.models
 {
@@ -21,7 +22,7 @@ namespace Iterum.models
     
         public DamageResult GetResult(RollType rollType)
         {
-            return new DamageResult(DiceUtils.Roll(Die, rollType), DamageType);
+            return new DamageResult(DiceUtils.RollMultiple(NumberOfDice, Die, rollType).Sum(), DamageType);
         }
 
         public override string ToString()

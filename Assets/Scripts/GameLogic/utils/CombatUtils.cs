@@ -28,25 +28,25 @@ namespace Assets.Scripts.GameLogic.utils
 
     public static class CombatUtils
     {
-        public static void AttackInAoe(ICreature source, Vector3Int point, int radius, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
+        public static void AttackInAoe(BaseCreature source, GridCoordinate point, int radius, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
         {
-            IEnumerable<ICreature> targets = CampaignGridLayout.GetTokensInRing(point, 0, radius).Select(x => x.creature);
-            foreach (ICreature target in targets)
+            IEnumerable<BaseCreature> targets = CampaignGridLayout.Instance.GetTokensInRing(point, 0, radius).Select(x => x.creature);
+            foreach (BaseCreature target in targets)
             {
                 Attack(source, target, attackType, actionPackage, actionResultBuilder);
             }
         }
 
-        public static void ForceSavingThrowInAoe(ICreature source, Vector3Int point, int radius, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
+        public static void ForceSavingThrowInAoe(BaseCreature source, GridCoordinate point, int radius, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
         {
-            IEnumerable<ICreature> targets = CampaignGridLayout.GetTokensInRing(point, 0, radius).Select(x => x.creature);
-            foreach (ICreature target in targets)
+            IEnumerable<BaseCreature> targets = CampaignGridLayout.Instance.GetTokensInRing(point, 0, radius).Select(x => x.creature);
+            foreach (BaseCreature target in targets)
             {
                 ForceSavingThrow(source, target, savingThrow, actionPackage, actionResultBuilder);
             }
         }
 
-        public static void Attack(ICreature source, ICreature target, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder) {
+        public static void Attack(BaseCreature source, BaseCreature target, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder) {
             int rollResult = DiceUtils.Roll(Dice.d20);
             int attackRollResult = rollResult + source.ModifierManager.GetAttackModifier(attackType);
             if (attackRollResult > target.EvasionRating)
@@ -61,7 +61,7 @@ namespace Assets.Scripts.GameLogic.utils
             }
         }
 
-        public static void ForceSavingThrow(ICreature source, ICreature target, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
+        public static void ForceSavingThrow(BaseCreature source, BaseCreature target, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
         {
             if (source.GetSaveDC(savingThrow) > target.SavingThrow(savingThrow.SaveStat, RollType.Normal))
             {
@@ -73,16 +73,16 @@ namespace Assets.Scripts.GameLogic.utils
             }
         }
 
-        public static void ApplyDamageAndModifiersInAoe(ICreature source, Vector3Int point, int radius, IList<DamageInfo> damageInfos, Dictionary<Attribute, int> modifiers, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
+        public static void ApplyDamageAndModifiersInAoe(BaseCreature source, GridCoordinate point, int radius, IList<DamageInfo> damageInfos, Dictionary<Attribute, int> modifiers, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
         {
-            IEnumerable<ICreature> creatures = CampaignGridLayout.GetTokensInRing(point, 0, radius).Select(x => x.creature);
+            IEnumerable<BaseCreature> creatures = CampaignGridLayout.Instance.GetTokensInRing(point, 0, radius).Select(x => x.creature);
             foreach (var creature in creatures)
             {
                 ApplyDamageAndModifiers(source, creature, damageInfos, modifiers, actionResultBuilder, attackType);
             }
         }
 
-        private static void ApplyDamageAndModifiers(ICreature source, ICreature target, IList<DamageInfo> damageInfos, Dictionary<Attribute, int> modifiers, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
+        private static void ApplyDamageAndModifiers(BaseCreature source, BaseCreature target, IList<DamageInfo> damageInfos, Dictionary<Attribute, int> modifiers, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
         {
             if (damageInfos != null && damageInfos.Count > 0)
             {
@@ -95,7 +95,7 @@ namespace Assets.Scripts.GameLogic.utils
             }
         }
 
-        private static void DealDamage(ICreature source, ICreature target, IList<DamageInfo> damageInfo, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
+        private static void DealDamage(BaseCreature source, BaseCreature target, IList<DamageInfo> damageInfo, ActionResultBuilder actionResultBuilder, AttackType attackType = null)
         {
             List<DamageResult> damageResults = damageInfo.Select(x =>
             {

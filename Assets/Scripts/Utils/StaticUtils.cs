@@ -21,7 +21,7 @@ namespace Assets.Scripts.Utils
 
         private static string GetProperty(Type type, string propName)
         {
-            if (!typeof(ICreature).IsAssignableFrom(type))
+            if (!typeof(BaseCreature).IsAssignableFrom(type))
                 throw new ArgumentException($"Type '{type.FullName}' must inherit from BaseCreature");
 
             var prop = type.GetProperty(propName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);

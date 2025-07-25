@@ -10,14 +10,14 @@ namespace Iterum.models
 {
     public class ProficiencyManager
     {
-        public ProficiencyManager(ICreature creature) {
+        public ProficiencyManager(BaseCreature creature) {
             this.creature = creature;
         }
 
         public ProficiencyManager() { }
 
         [JsonIgnore]
-        public ICreature creature;
+        public BaseCreature creature;
 
         [JsonProperty]
         [JsonConverter(typeof(DictionaryKeySkillConverter))]

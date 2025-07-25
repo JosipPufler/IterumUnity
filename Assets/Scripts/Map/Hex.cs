@@ -3,7 +3,7 @@
 namespace Iterum.Scripts.Map
 {
     [Serializable]
-    public class Hex
+    public struct Hex
     {
         public Hex(int x, int y, int z)
         {
@@ -12,8 +12,8 @@ namespace Iterum.Scripts.Map
             Z = z;
         }
 
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int Z { get; set; }
+        public int X;
+        public int Y;
+        public int Z;
     }
 }

@@ -18,12 +18,12 @@ namespace Iterum.utils
         }
 
         public static int Roll(Dice die, RollType rollType = RollType.Normal) {
-            int roll = random.Next(0, (int)die + 1);
+            int roll = random.Next(1, (int)die);
             
             switch (rollType)
             {
                 case RollType.Advantage:
-                    int rollWithAdvantage = random.Next(0, (int)die + 1);
+                    int rollWithAdvantage = random.Next(1, (int)die + 1);
                     if (rollWithAdvantage >= roll)
                     {
                         return rollWithAdvantage;
@@ -34,7 +34,7 @@ namespace Iterum.utils
                     return roll;
 
                 case RollType.Disadvantage:
-                    int rollWithDisadvantage = random.Next(0, (int)die + 1);
+                    int rollWithDisadvantage = random.Next(1, (int)die + 1);
                     if (rollWithDisadvantage <= roll)
                     {
                         return rollWithDisadvantage;

@@ -35,6 +35,35 @@ namespace Iterum.Scripts.Utils.Managers
             }
         }
 
+        public void GetAction(string id, Action<ActionDto> onSuccess, Action<string> onFail)
+        {
+            StartCoroutine(GetActionRequest(id, onSuccess, onFail));
+        }
+
+        private IEnumerator GetActionRequest(string id, Action<ActionDto> onSuccess, Action<string> onFail)
+        {
+            UnityWebRequest request = null;
+            yield return RequestService.ConstructSimpleWebRequest(EndpointUtils.ActionById(id), Methods.GET, false, null, result => request = result);
+
+            if (request == null)
+            {
+                onFail?.Invoke("Failed to construct request");
+                yield break;
+            }
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                ActionDto response = JsonConvert.DeserializeObject<ActionDto>(request.downloadHandler.text);
+                onSuccess?.Invoke(response);
+            }
+            else
+            {
+                onFail?.Invoke(request.error);
+            }
+        }
+
         public void GetActions(Action<List<ActionDto>> onSuccess, Action<string> onFail)
         {
             StartCoroutine(GetActionsRequest(onSuccess, onFail));

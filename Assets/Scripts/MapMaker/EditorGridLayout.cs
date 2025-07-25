@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Assets.Scripts;
 using Assets.Scripts.Map;
 using Iterum.Scripts.Map;
 using Iterum.Scripts.UI;
@@ -13,16 +14,28 @@ public class EditorGridLayout : HexGridLayout
 {
     public Material holderMaterial;
 
-    private List<GameObject> hexHolders = new List<GameObject>();
+    private List<GameObject> hexHolders = new();
 
     void OnEnable()
     {
         LayoutGrid();
-        if (GameManager.Instance != null && GameManager.Instance.SelectedMap != null && GameManager.Instance.SelectedMap.Hexes != null)
+        if (GameManager.Instance != null && GameManager.Instance.SelectedMap.IsValid() && GameManager.Instance.SelectedMap.Hexes != null)
         {
+            if (GameManager.Instance.SelectedMap.MaxX <= 0)
+            {
+                GameManager.Instance.SelectedMap.MaxX = 10;
+            }
+            if (GameManager.Instance.SelectedMap.MaxY <= 0)
+            {
+                GameManager.Instance.SelectedMap.MaxY = 10;
+            }
+            gridSize.x = GameManager.Instance.SelectedMap.MaxX;
+            gridSize.y = GameManager.Instance.SelectedMap.MaxY;
+            
+            isFlatTopped = GameManager.Instance.SelectedMap.IsFlatTopped;
             foreach (Hex hex in GameManager.Instance.SelectedMap.Hexes)
             {
-                TryAddHex(new Vector3Int(hex.X, hex.Y, hex.Z));
+                TryAddHex(new GridCoordinate(hex.X, hex.Y, hex.Z));
             }
         }
     }
@@ -36,11 +49,14 @@ public class EditorGridLayout : HexGridLayout
         if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) &&
        Input.GetKeyDown(KeyCode.S))
         {
-            List<Hex> hexes = new List<Hex>();
+            List<Hex> hexes = new();
             foreach (var key in grid.Keys)
             {
                 hexes.Add(new Hex(key.x, key.y, key.z));
             }
+            GameManager.Instance.SelectedMap.MaxX = gridSize.x;
+            GameManager.Instance.SelectedMap.MaxY = gridSize.y;
+            GameManager.Instance.SelectedMap.IsFlatTopped = isFlatTopped;
             GameManager.Instance.SelectedMap.Hexes = hexes;
             MapManager.Instance.UpdateMap(GameManager.Instance.SelectedMap, null, OnError);
         }
@@ -63,8 +79,8 @@ public class EditorGridLayout : HexGridLayout
                         {
                             if (pair.Value == hitObject)
                             {
-                                Vector3Int currentKey = pair.Key;
-                                Vector3Int aboveKey = new Vector3Int(currentKey.x, currentKey.y + 1, currentKey.z);
+                                GridCoordinate currentKey = pair.Key;
+                                GridCoordinate aboveKey = new(currentKey.x, currentKey.y + 1, currentKey.z);
                                 TryAddHex(aboveKey);
                                 break;
                             }
@@ -107,7 +123,7 @@ public class EditorGridLayout : HexGridLayout
 
                                 int col2 = q2;
                                 int row2 = r2 + (q2 - (q2 & 1)) / 2;
-                                Vector3Int neighborKey = new Vector3Int(col2, currentKey.y, row2);
+                                GridCoordinate neighborKey = new(col2, currentKey.y, row2);
                                 TryAddHex(neighborKey);
                                 break;
                             }
@@ -149,7 +165,7 @@ public class EditorGridLayout : HexGridLayout
 
                 if (hitObject.CompareTag("Hex"))
                 {
-                    Vector3Int? keyToRemove = null;
+                    GridCoordinate? keyToRemove = null;
 
                     foreach (var pair in grid)
                     {
@@ -175,7 +191,7 @@ public class EditorGridLayout : HexGridLayout
     }
 
     protected void TryAddBottomHex(Vector2Int vector2) {
-        Vector3Int key = new Vector3Int(vector2.x, 0, vector2.y);
+        GridCoordinate key = new(vector2.x, 0, vector2.y);
 
         TryAddHex(key);
     }
@@ -192,7 +208,7 @@ public class EditorGridLayout : HexGridLayout
         {
             for(int x = 0; x < gridSize.x; x++)
             {
-                GameObject tile = new GameObject($"Hex {x},{y}", typeof(HexRenderer));
+                GameObject tile = new($"Hex {x},{y}", typeof(HexRenderer));
                 tile.transform.position = GetPositionForHexFromCoordinate(new Vector2Int(x, y));
 
                 tile.tag = "HexHolder";
@@ -205,7 +221,7 @@ public class EditorGridLayout : HexGridLayout
             }
         }
 
-        List<Vector3Int> keysToDelete = new List<Vector3Int>();
+        List<GridCoordinate> keysToDelete = new();
         foreach (var hex in grid.Keys)
         {
             if (hex.x >= gridSize.x || hex.z >= gridSize.y) {
@@ -217,6 +233,17 @@ public class EditorGridLayout : HexGridLayout
         {
             Destroy(grid[key]);
             grid.Remove(key);
+        }
+        Dictionary<GridCoordinate, GameObject> secondaryGrid = new();
+        foreach (var hex in grid)
+        {
+            Destroy(hex.Value);
+            secondaryGrid.Add(hex.Key, hex.Value);
+        }
+        grid.Clear();
+        foreach (var hex in secondaryGrid)
+        {
+            TryAddHex(hex.Key);
         }
     }
 }

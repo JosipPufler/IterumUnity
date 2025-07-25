@@ -10,6 +10,9 @@ namespace Mirror.Examples.Basic
         [Tooltip("Assign Players Panel for instantiating PlayerUI as child")]
         public RectTransform playersPanel;
 
+        [Tooltip("Assign Players Panel for instantiating PlayerUI as child")]
+        public RectTransform hostPanel;
+
         // static instance that can be referenced from static methods below.
         static CanvasUI instance;
 
@@ -24,5 +27,6 @@ namespace Mirror.Examples.Basic
         }
 
         public static RectTransform GetPlayersPanel() => instance.playersPanel;
+        public static RectTransform GetHostPanel() => instance.hostPanel;
     }
 }

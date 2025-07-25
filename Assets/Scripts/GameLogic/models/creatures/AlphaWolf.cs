@@ -1,13 +1,14 @@
-﻿using Iterum.models.items;
-using Iterum.models.races;
-using Iterum.models;
-using UnityEngine;
-using Iterum.models.interfaces;
+﻿using Iterum.models;
 using Iterum.models.enums;
+using Iterum.models.interfaces;
+using Iterum.models.items;
+using Iterum.models.races;
+using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Assets.Scripts.GameLogic.models.creatures
 {
-    public class AlphaWolf : ICreature
+    public class AlphaWolf : BaseCreature
     {
         public new static string DisplayName { get; private set; } = "Alpha wolf";
 

@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.actions;
 using Iterum.models.enums;
 using System.Collections.Generic;
 
@@ -5,11 +6,11 @@ namespace Iterum.models.interfaces
 {
     public interface IEquipment : IItem
     {
-        bool CanEquip(ICreature creature);
+        bool CanEquip(BaseCreature creature);
 
         Dictionary<Attribute, int> AttributeModifiers {  get; }
         Dictionary<Attribute, double> AttributeMultipliers { get; }
 
-        IList<IAction> Actions { get; }
+        IList<BaseAction> Actions { get; }
     }
 }

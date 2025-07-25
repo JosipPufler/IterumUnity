@@ -184,6 +184,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 454492277507544065}
+  Camera: {fileID: 1588465479351771280}
   tooltip: {fileID: 0}
   normalSpeed: 1
   fastSpeed: 2

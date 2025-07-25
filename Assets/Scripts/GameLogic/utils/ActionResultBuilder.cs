@@ -1,32 +1,30 @@
 using Iterum.models;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 
 namespace Iterum.utils
 {
     public class ActionResultBuilder
     {
-        private ActionResultBuilder(IGameEntity gameEntity) {
+        private ActionResultBuilder(BaseCreature gameEntity) {
             actionResult = new ActionResult(gameEntity);
         }
 
         private readonly ActionResult actionResult; 
 
-        public static ActionResultBuilder Start(IGameEntity gameEntity) {
+        public static ActionResultBuilder Start(BaseCreature gameEntity) {
             return new ActionResultBuilder(gameEntity);
         }
 
-        public ActionResultBuilder AmountHeald(IEnumerable<KeyValuePair<IDamageable, int>> healed)
+        public ActionResultBuilder AmountHeald(IEnumerable<KeyValuePair<BaseCreature, int>> healed)
         {
             actionResult.AmountHealed = actionResult.AmountHealed.ToArray().Concat(healed).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.Sum(x => x.Value));
             return this;
         }
 
-        public ActionResultBuilder AmountHeald(IDamageable damageable, int amount)
+        public ActionResultBuilder AmountHeald(BaseCreature damageable, int amount)
         {
             if (actionResult.AmountHealed.TryGetValue(damageable, out int existingAmount))
             {
@@ -39,17 +37,17 @@ namespace Iterum.utils
             return this;
         }
 
-        public ActionResultBuilder AmountDamaged(IEnumerable<KeyValuePair<IDamageable, IEnumerable<DamageResult>>> damage)
+        public ActionResultBuilder AmountDamaged(IEnumerable<KeyValuePair<BaseCreature, IEnumerable<DamageResult>>> damage)
         {
             actionResult.AmountDamaged = actionResult.AmountDamaged.ToArray().Concat(damage).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.SelectMany(x => x.Value));
             return this;
         }
 
-        public ActionResultBuilder AmountDamaged(IDamageable target, IEnumerable<DamageResult> damage){
-            return AmountDamaged(new[] { new KeyValuePair<IDamageable, IEnumerable<DamageResult>>(target, damage) });
+        public ActionResultBuilder AmountDamaged(BaseCreature target, IEnumerable<DamageResult> damage){
+            return AmountDamaged(new[] { new KeyValuePair<BaseCreature, IEnumerable<DamageResult>>(target, damage) });
         }
 
-        public ActionResultBuilder AmountDamaged(IDamageable damageable, DamageResult damage)
+        public ActionResultBuilder AmountDamaged(BaseCreature damageable, DamageResult damage)
         {
             if (actionResult.AmountDamaged.TryGetValue(damageable, out IEnumerable<DamageResult> value))
             {
@@ -62,13 +60,13 @@ namespace Iterum.utils
             return this;
         }
 
-        public ActionResultBuilder StatusEffectsApplied(IEnumerable<KeyValuePair<ICreature, HashSet<StatusEffect>>> effects)
+        public ActionResultBuilder StatusEffectsApplied(IEnumerable<KeyValuePair<BaseCreature, HashSet<StatusEffect>>> effects)
         {
             actionResult.StatusEffectsApplied = actionResult.StatusEffectsApplied.ToArray().Concat(effects).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.SelectMany(x => x.Value).ToHashSet());
             return this;
         }
 
-        public ActionResultBuilder StatusEffectsApplied(ICreature creature, StatusEffect statusEffect)
+        public ActionResultBuilder StatusEffectsApplied(BaseCreature creature, StatusEffect statusEffect)
         {
             if (actionResult.StatusEffectsApplied.TryGetValue(creature, out HashSet<StatusEffect> value))
             {
@@ -81,13 +79,13 @@ namespace Iterum.utils
             return this;
         }
 
-        public ActionResultBuilder AttributesModified(IEnumerable<KeyValuePair<ICreature, Dictionary<Attribute, int>>> attributes)
+        public ActionResultBuilder AttributesModified(IEnumerable<KeyValuePair<BaseCreature, Dictionary<Attribute, int>>> attributes)
         {
             actionResult.AttributesModified = actionResult.AttributesModified.ToArray().Concat(attributes).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.SelectMany(x => x.Value).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.Sum(x => x.Value)));
             return this;
         }
 
-        public ActionResultBuilder AttributesModified(ICreature creature, Dictionary<Attribute, int> attributes)
+        public ActionResultBuilder AttributesModified(BaseCreature creature, Dictionary<Attribute, int> attributes)
         {
             if (actionResult.AttributesModified.TryGetValue(creature, out Dictionary<Attribute, int> value))
             {

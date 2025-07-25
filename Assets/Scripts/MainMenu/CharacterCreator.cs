@@ -10,7 +10,6 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.models.races;
 using Iterum.Scripts.Utils.Managers;
-using Mirror.BouncyCastle.Bcpg;
 using Newtonsoft.Json;
 using SFB;
 using System;
@@ -20,10 +19,8 @@ using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEditor;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.EventSystems.EventTrigger;
 
 namespace Assets.Scripts.MainMenu
 {
@@ -81,11 +78,11 @@ namespace Assets.Scripts.MainMenu
         private void Start()
         {
             raceDropdown.ClearOptions();
-            List<string> typeNames = raceList.Select(t => t.Name).ToList();
+            List<string> typeNames = raceList.Select(x => x.Name).ToList();
             raceDropdown.AddOptions(typeNames);
 
             classDropdown.ClearOptions();
-            typeNames = classList.Select(t => t.Name).ToList();
+            typeNames = classList.Select(x => x.Name).ToList();
             classDropdown.AddOptions(typeNames);
 
             btnCancle.onClick.AddListener(GoBack);
@@ -233,22 +230,22 @@ namespace Assets.Scripts.MainMenu
             object instance = Activator.CreateInstance(selectedRace);
             BaseRace raceInstance = instance as BaseRace;
 
-            Type selectedClass = classList[raceDropdown.value];
+            Type selectedClass = classList[classDropdown.value];
 
             instance = Activator.CreateInstance(selectedClass) as BaseClass;
             BaseClass classInstance = instance as BaseClass;
 
             AssetManager.Instance.UploadImage(selectedFilePath, null, null);
             selectedFilePath = $"{PlayerPrefs.GetString("username")}/images/{Path.GetFileName(selectedFilePath)}";
-            ICreature character;
+            BaseCreature character;
             if (isPlayerCharacter.isOn)
             {
-                character = new IDownableCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
+                character = new DownableCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
                 {
                     IsPlayer = isPlayerCharacter.isOn
                 };
             } else {
-                character = new ICreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
+                character = new BaseCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
                 {
                     IsPlayer = isPlayerCharacter.isOn
                 };
@@ -270,6 +267,7 @@ namespace Assets.Scripts.MainMenu
             }
 
             bool classJoined = character.ClassManager.StartClass(selectedClass);
+            character.Spawn();
 
             string serializedCharacter = JsonConvert.SerializeObject(character, JsonSerializerSettingsProvider.GetSettings());
 
@@ -332,15 +330,15 @@ namespace Assets.Scripts.MainMenu
             return null;
         }
 
-        public void LoadCreature(ICreature creature, string currentId) {
+        public void LoadCreature(Iterum.models.interfaces.BaseCreature creature, string currentId) {
             this.currentId = currentId;
 
             characterName.text = creature.Name;
             characterBio.text = creature.Description;
 
             selectedFilePath = creature.ImagePath;
-            AssetManager.Instance.PreviewImage(creature.ImagePath, (texture) => characterImage.GetComponent<RawImage>().texture = texture, null);
-            IClass characterClass = creature.ClassManager.classes.First();
+            TextureMemorizer.LoadTexture(creature.ImagePath, (texture) => characterImage.GetComponent<RawImage>().texture = texture);
+            IClass characterClass = creature.ClassManager.Classes.First();
 
             classDropdown.SetValueWithoutNotify(classList.FindIndex(x => x == characterClass.GetType()));
             raceDropdown.SetValueWithoutNotify(raceList.FindIndex(x => x == creature.Race.GetType()));
@@ -373,14 +371,14 @@ namespace Assets.Scripts.MainMenu
         }
     }
 
-    [System.Serializable]
+    [Serializable]
     public struct StatInputBinding
     {
         public StatEnum stat;
         public TMP_InputField inputField;
     }
 
-    [System.Serializable]
+    [Serializable]
     public struct SkillInputBinding
     {
         public StatEnum skill;

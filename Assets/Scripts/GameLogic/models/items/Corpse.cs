@@ -1,15 +1,18 @@
+using Assets.Scripts;
+using Assets.Scripts.GameLogic.models.interfaces;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Iterum.models.items
 {
     public class Corpse : IDamageable, IGameObject, IContainer
     {
-        private readonly ICreature creature;
-        public Corpse(ICreature creature)
+        private readonly BaseCreature creature;
+        public Corpse(BaseCreature creature)
         {
             this.creature = creature;
             CurrentPosition = creature.CurrentPosition;
@@ -19,20 +22,19 @@ namespace Iterum.models.items
             CurrentHp = MaxHp;
         }
 
-        public Vector3Int CurrentPosition { get; set; }
+        public GridCoordinate CurrentPosition { get; set; }
         public string Name { get; }
         public int CurrentHp { get; set; }
         public int MaxHp { get; set; }
         public int OriginalMaxHp { get; }
-        public IDictionary<IItem, int> Inventory { get; }
+        public List<BaseItem> Inventory { get; }
 
         public void Destroy()
         {
-            Inventory[new CorpseRation(creature)] = OriginalMaxHp / 25;
-            /*for (int i = 0; i < OriginalMaxHp/25; i++)
+            for (int i = 0; i < OriginalMaxHp/25; i++)
             {
                 Inventory.Add(new CorpseRation(creature));
-            }*/
+            }
         }
 
         public int TakeDamage(IEnumerable<DamageResult> damage)
@@ -56,7 +58,7 @@ namespace Iterum.models.items
         }
 
         #nullable enable
-        public ICreature? Ressurect(int newHp) {
+        public BaseCreature? Ressurect(int newHp) {
             if (newHp >= 1)
             {
                 creature.CurrentHp = newHp;

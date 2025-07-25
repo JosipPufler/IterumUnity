@@ -1,4 +1,6 @@
+using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.GameLogic.models.items;
 using Iterum.models.enums;
 using System;
 using System.Collections.Generic;
@@ -12,9 +14,9 @@ namespace Iterum.models.interfaces
         int ReachModifier { get; }
         IList<WeaponTrait> WeaponTraits { get; }
         WeaponType WeaponType { get; }
-        IList<IAction> WeaponActions { get; }
+        IList<BaseAction> WeaponActions { get; }
         WeaponSlotDetails WeaponSlotDetails { get; set; }
-        ICreature Creature { get; set; }
+        BaseCreature Creature { get; set; }
 
         int EvasionRatingBonus 
         {
@@ -29,24 +31,11 @@ namespace Iterum.models.interfaces
             } 
         }
 
-        IList<IAction> IEquipment.Actions =>
+        IList<BaseAction> IEquipment.Actions =>
             WeaponActions
                 .Concat(WeaponTraits.SelectMany(trait => trait.Actions))
                 .ToList();
 
-        string GetDamageInfoString() {
-            if (DamageInfos.Count == 1)
-                return DamageInfos[0].ToString();
-
-            if (DamageInfos.Count == 2)
-                return $"{DamageInfos[0]} and {DamageInfos[1]}";
-
-            var allButLast = DamageInfos
-                .Take(DamageInfos.Count - 1)
-                .Select(di => di.ToString());
-            var last = DamageInfos[DamageInfos.Count - 1].ToString();
-
-            return $"{string.Join(", ", allButLast)} and {last}";
-        }
+        string GetDamageInfoString();
     }
 }

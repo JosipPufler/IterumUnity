@@ -8,7 +8,7 @@ namespace Iterum.models
 {
     public class StatusEffect
     {
-        private StatusEffect(string name, IDictionary<Attribute, int> attributeModifier, Action<ICreature> action)
+        private StatusEffect(string name, IDictionary<Attribute, int> attributeModifier, Action<BaseCreature> action)
         {
             Name = name;
             AttributeModifier = attributeModifier;
@@ -17,6 +17,6 @@ namespace Iterum.models
 
         public string Name { get; }
         public IDictionary<Attribute, int> AttributeModifier { get; }
-        public Action<ICreature> Action { get; }
+        public Action<BaseCreature> Action { get; }
     }
 }

@@ -23,7 +23,6 @@ public class ToolTipManager : MonoBehaviour
     private float lastHitTime;
     private RectTransform panelRect;
 
-    public CameraController cameraController;
     private bool isUIOverride = false;
     void Awake()
     {
@@ -36,7 +35,7 @@ public class ToolTipManager : MonoBehaviour
     {
         PositionTooltip();
 
-        if (cameraController.IsCameraMoving)
+        if (CameraController.Instance != null && CameraController.Instance.IsCameraMoving)
         {
             HideTooltip();
             currentHover = null;
@@ -46,21 +45,23 @@ public class ToolTipManager : MonoBehaviour
         if (isUIOverride)
             return;
 
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red);
-
-        if (Physics.Raycast(ray, out var hit, Mathf.Infinity, tokenMask, QueryTriggerInteraction.Ignore) && !EventSystem.current.IsPointerOverGameObject())
+        if (CameraController.Instance != null && CameraController.Instance.Camera != null)
         {
-            if (hit.collider.TryGetComponent<ToolTipTrigger>(out var trig))
+            Ray ray = CameraController.Instance.Camera.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out var hit, Mathf.Infinity, tokenMask, QueryTriggerInteraction.Ignore) && !EventSystem.current.IsPointerOverGameObject())
             {
-                if (trig != currentHover)
+                if (hit.collider.TryGetComponent<ToolTipTrigger>(out var trig))
                 {
-                    currentHover = trig;
-                    UpdateTooltipText(trig.tooltipText);
+                    if (trig != currentHover)
+                    {
+                        currentHover = trig;
+                        UpdateTooltipText(trig.tooltipText);
+                    }
+                    lastHitTime = Time.time;
+                    ShowTooltip();
+                    return;
                 }
-                lastHitTime = Time.time;
-                ShowTooltip();
-                return;
             }
         }
 

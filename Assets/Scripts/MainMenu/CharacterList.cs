@@ -19,7 +19,7 @@ namespace Assets.Scripts.MainMenu
         public Button newCharacter;
         public GameObject mainPanel;
 
-        private ICreature selectedCreature;
+        private BaseCreature selectedCreature;
         private string selectedId;
 
         readonly IList<GameObject> entries = new List<GameObject>();
@@ -77,7 +77,7 @@ namespace Assets.Scripts.MainMenu
         {
             mainPanel.SetActive(false);
             creator.gameObject.SetActive(true);
-            selectedCreature = JsonConvert.DeserializeObject<ICreature>(character.Data, JsonSerializerSettingsProvider.GetSettings());
+            selectedCreature = JsonConvert.DeserializeObject<BaseCreature>(character.Data, JsonSerializerSettingsProvider.GetSettings());
             selectedId = character.Id;
             if (creator.IsInitialized)
             {

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Utils;
 using Newtonsoft.Json;
-using UnityEditor.Playables;
+using Unity.VisualScripting;
 
 namespace Iterum.models.enums
 {
@@ -27,7 +27,7 @@ namespace Iterum.models.enums
 
         // Agility
         public static readonly Skill Acrobatics = new("Acrobatics", Stat.Agility, Attribute.Acrobatics);
-        public static readonly Skill SlightOfHand = new("SlightOfHand", Stat.Agility, Attribute.SlightOfHand);
+        public static readonly Skill SlightOfHand = new("Slight of Hand", Stat.Agility, Attribute.SlightOfHand);
         public static readonly Skill Stealth = new("Stealth", Stat.Agility, Attribute.Stealth);
 
         // Endurance
@@ -54,7 +54,7 @@ namespace Iterum.models.enums
         public static readonly Skill Performance = new("Performance", Stat.Charisma, Attribute.Performance);
         public static readonly Skill Persuasion = new("Persuasion", Stat.Charisma, Attribute.Persuasion);
         public static readonly Skill Deception = new("Deception", Stat.Charisma, Attribute.Deception);
-        public static readonly Skill StreetSmarts = new("StreetSmarts", Stat.Charisma, Attribute.StreetSmarts);
+        public static readonly Skill StreetSmarts = new("Street Smarts", Stat.Charisma, Attribute.StreetSmarts);
         public static readonly Skill Barter = new("Barter", Stat.Charisma, Attribute.Barter);
 
         public static IEnumerable<Skill> GetAllSkills() => new List<Skill>(){
@@ -88,7 +88,11 @@ namespace Iterum.models.enums
         };
 
         public static Skill FromName(string name) =>
-            GetAllSkills().FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            GetAllSkills().FirstOrDefault(s => s.Name.Replace(" ", "").Equals(name.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"Unknown skill name: {name}");
+
+        public static Skill FromAttribute(Attribute attribute) =>
+            GetAllSkills().FirstOrDefault(s => s.Attribute.Equals(attribute))
+            ?? throw new ArgumentException($"Unknown skill attribute: {attribute}");
     }
 }

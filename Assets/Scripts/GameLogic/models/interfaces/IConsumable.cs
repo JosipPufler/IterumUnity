@@ -6,12 +6,12 @@ namespace Iterum.models.interfaces
     public interface IConsumable : IItem
     {
         Consume ConsumeAction { get; }
-        ActionResult Consume(IDictionary<IItem, int> source, ActionInfo actionInfo)
+        ActionResult Consume(List<IItem> source, ActionInfo actionInfo)
         {
-            if (source.ContainsKey(this))
+            if (source.Contains(this))
             {
                 ActionResult actionResult = ((IAction)ConsumeAction).ExecuteAction(actionInfo);
-                source[this] -= 1;
+                source.Remove(this);
                 return actionResult;
             }
             return null;

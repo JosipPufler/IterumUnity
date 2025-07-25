@@ -35,11 +35,12 @@ namespace Iterum.models
         [JsonConverter(typeof(DictionaryKeyArmorSlotConverterInt))]
         public Dictionary<ArmorSlot, int> ArmorSlots { get; } = new();
 
-        public ICreature creature;
+        [JsonIgnore]
+        public BaseCreature creature;
 
         public ModifierManager() : this(null){}
 
-        public ModifierManager(ICreature creature)
+        public ModifierManager(BaseCreature creature)
         {
             this.creature = creature;
         }

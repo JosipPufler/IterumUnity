@@ -1,20 +1,28 @@
+using Assets.Scripts;
+using Assets.Scripts.GameLogic.models;
+using Mirror;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
 [RequireComponent(typeof(MeshCollider))]
-public class HexRenderer : MonoBehaviour
+public class HexRenderer : NetworkBehaviour
 {
-    private const float numberVerticalOffset = 10f;
-    public float innerSize;
-    public float outerSize;
-    public float height;
-    public bool isFlatTopped;
-    public float startingY;
+    public bool isHighlighted;
+    public bool isTargetHighlighted;
 
+    private const float numberVerticalOffset = 10f;
+    [SyncVar] public float innerSize;
+    [SyncVar] public float outerSize;
+    [SyncVar] public float height;
+    [SyncVar] public bool isFlatTopped;
+    [SyncVar] public float startingY;
+    [SyncVar] public GridCoordinate positon;
+    
     private GameObject ringOverlay;
     public Material borderMaterial;
     public Material targetMaterial;
@@ -30,6 +38,20 @@ public class HexRenderer : MonoBehaviour
     private Camera mainCam;
     private List<Face> faces = new();
     private MeshRenderer borderMeshRenderer;
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+
+        CampaignGridLayout.Instance.RegisterHex(positon, gameObject);
+        Initialize(material, borderMaterial, targetMaterial, innerSize, outerSize, height, isFlatTopped, startingY);
+    }
+
+    public override void OnStopClient()
+    {
+        base.OnStopClient();
+        CampaignGridLayout.Instance.UnregisterHex(positon);
+    }
 
     public void Initialize(Material mat, Material borderMat, Material targetMat, float inner, float outer, float height, bool isFlat, float startingY = 0)
     {
@@ -73,8 +95,9 @@ public class HexRenderer : MonoBehaviour
         }
     }
 
-    public void DrawMesh() 
+    public void DrawMesh()
     {
+        faces.Clear();
         DrawFaces();
         CombineFaces();
 
@@ -256,8 +279,86 @@ public class HexRenderer : MonoBehaviour
         numberText.text = "";
     }
 
+    [Command(requiresAuthority = false)]
+    private void CmdShowHighlight(int number)
+    {
+        ShowHighlight(number);
+        RpcShowHighlight(number);
+    }
+
+    [Command(requiresAuthority = false)]
+    private void CmdShowTargetHighlight()
+    {
+        ShowTargetHighlight();
+        RpcShowTargetHighlight();
+    }
+
+    [Command(requiresAuthority = false)]
+    private void CmdHideHighlight()
+    {
+        HideHighlight();
+        RpcHideHighlight();
+    }
+
     public void ShowHighlight(int number)
     {
+        if (isServer)
+        {
+            isTargetHighlighted = false;
+            isHighlighted = true;
+            if (ringOverlay == null) CreateBorderRing();
+            if (numberCanvasGO == null) CreateNumberLabel();
+
+            borderMeshRenderer.material = borderMaterial;
+            ringOverlay.SetActive(true);
+            numberCanvasGO.SetActive(true);
+            numberText.text = number.ToString();
+        }
+        else
+        {
+            CmdShowHighlight(number);
+        }
+    }
+
+    public void ShowTargetHighlight() {
+        if (isServer)
+        {
+            isTargetHighlighted = true;
+            isHighlighted = false;
+            if (ringOverlay == null) CreateBorderRing();
+            if (numberCanvasGO == null) CreateNumberLabel();
+
+            numberCanvasGO.SetActive(false);
+            borderMeshRenderer.material = targetMaterial;
+            ringOverlay.SetActive(true);
+        }
+        else 
+        {
+            CmdShowTargetHighlight();
+        }
+    }
+
+    public void HideHighlight()
+    {
+        if (isServer)
+        {
+            isTargetHighlighted = false;
+            isHighlighted = false;
+            if (ringOverlay != null) ringOverlay.SetActive(false);
+            if (numberCanvasGO != null) numberCanvasGO.SetActive(false);
+        }
+        else 
+        {
+            CmdHideHighlight();
+        }
+    }
+
+    [ClientRpc]
+    private void RpcShowHighlight(int number)
+    {
+        isTargetHighlighted = false;
+        isHighlighted = true;
+
         if (ringOverlay == null) CreateBorderRing();
         if (numberCanvasGO == null) CreateNumberLabel();
 
@@ -267,15 +368,26 @@ public class HexRenderer : MonoBehaviour
         numberText.text = number.ToString();
     }
 
-    public void ShowTargetHighlight() {
-        if (ringOverlay == null) CreateBorderRing();
+    [ClientRpc]
+    private void RpcShowTargetHighlight()
+    {
+        isTargetHighlighted = true;
+        isHighlighted = false;
 
+        if (ringOverlay == null) CreateBorderRing();
+        if (numberCanvasGO == null) CreateNumberLabel();
+
+        numberCanvasGO.SetActive(false);
         borderMeshRenderer.material = targetMaterial;
         ringOverlay.SetActive(true);
     }
 
-    public void HideHighlight()
+    [ClientRpc]
+    private void RpcHideHighlight()
     {
+        isTargetHighlighted = false;
+        isHighlighted = false;
+
         if (ringOverlay != null) ringOverlay.SetActive(false);
         if (numberCanvasGO != null) numberCanvasGO.SetActive(false);
     }

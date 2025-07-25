@@ -14,15 +14,18 @@ namespace Iterum.Scripts.UI
         public static GameManager Instance { get; private set; }
 
         public MapDto SelectedMap;
-        public ICreature SelectedCreature { get; set; }
+        public BaseCreature SelectedCreature { get; set; }
+        public CharacterDto SelectedCharacter { get; set; }
         public Team Team { get; set; } = Team.ENEMY;
         public ActionDto SelectedAction { get; set; }
+        public SessionDto Session { get; set; }
 
         void Awake()
         {
             if (Instance == null)
             {
                 AssetManager.EnsureExists();
+                SessionManager.EnsureExists();
                 MapManager.EnsureExists();
                 ActionManager.EnsureExists();
                 UserManager.EnsureExists();

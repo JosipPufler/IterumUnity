@@ -11,7 +11,7 @@ namespace Assets.Scripts.GameLogic.models.creatures
     {
         public BaseClass(){}
 
-        public BaseClass(ICreature creature)
+        public BaseClass(BaseCreature creature)
         {
             Creature = creature;
             if (ClassActions.TryGetValue(1, out List<IAction> actions))
@@ -21,9 +21,9 @@ namespace Assets.Scripts.GameLogic.models.creatures
             AttributesModifiers[Attribute.MaxHp] = (int)HealthDie + Creature.ModifierManager.GetAttribute(Attribute.Endurance, false);
         }
 
-        public ICreature Creature { get; set; }
+        public BaseCreature Creature { get; set; }
 
-        public bool InitCreature(ICreature creature) {
+        public bool InitCreature(BaseCreature creature) {
             Creature = creature;
             if (ClassActions.TryGetValue(1, out List<IAction> actions))
             {
@@ -55,7 +55,7 @@ namespace Assets.Scripts.GameLogic.models.creatures
 
         public string Description { get; set; }
 
-        public abstract bool CanJoin(ICreature creature);
+        public abstract bool CanJoin(BaseCreature creature);
 
         public bool LevelUp()
         {

@@ -1,10 +1,9 @@
-using System.Collections.Generic;
-using UnityEngine;
+using Assets.Scripts;
 
 namespace Iterum.models.interfaces
 {
     public interface IGameObject : IGameEntity
     {
-        Vector3Int CurrentPosition { get; set; }
+        GridCoordinate CurrentPosition { get; set; }
     }
 }

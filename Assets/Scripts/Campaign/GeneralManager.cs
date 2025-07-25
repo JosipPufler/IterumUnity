@@ -1,19 +1,23 @@
-using UnityEngine;
-using Random = System.Random;
+using Assets.Scripts.Campaign;
+using Assets.Scripts.Utils;
 using Iterum.models.interfaces;
+using Mirror;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting.Antlr3.Runtime;
+using UnityEngine;
 using UnityEngine.UI;
-using Assets.Scripts.Utils;
-using Assets.Scripts.Campaign;
 
 public class GeneralManager : MonoBehaviour
 {
+    public static GeneralManager Instance;
+
+    private void Awake() => Instance = this;
+
     [Header("Managers")]
     public ScrollViewAutoCenter initiativeBar;
     public CampaignGridLayout layoutManager;
     public CampaignMenuManager menuManager;
-    public CameraController cameraController;
 
     [Header("Prefabs")]
     public GameObject initiativePortraitPrefab;
@@ -22,7 +26,6 @@ public class GeneralManager : MonoBehaviour
     public Button btnEndTurn;
 
     private GameObject initiativeBarContent;
-    private readonly Random rng = new();
 
     public List<(int priority, CharacterToken token)> initiativeOrder = new();
     readonly List<(GameObject portrait, CharacterToken token)> portraitOrder = new();
@@ -31,12 +34,12 @@ public class GeneralManager : MonoBehaviour
 
     private void Start()
     {
-        btnEndTurn.onClick.AddListener(EndTurn);
+        btnEndTurn.onClick.AddListener(OnEndTurnButtonClicked);
 
         initiativeBarContent = initiativeBar.content.gameObject;
     }
 
-    private void Update()
+    /*private void Update()
     {
         for (int i = initiativeOrder.Count-1; i >= 0; i--)
         {
@@ -51,9 +54,9 @@ public class GeneralManager : MonoBehaviour
                 }
             }
         }
-    }
+    }*/
 
-    public void StartCombatTurn(bool first)
+    /*public void StartCombatTurn(bool first)
     {
         InCombat = true;
         foreach (Transform child in initiativeBarContent.transform)
@@ -80,7 +83,7 @@ public class GeneralManager : MonoBehaviour
         }
 
         HighlightFirst();
-    }
+    }*/
 
     private void HighlightFirst()
     {
@@ -92,18 +95,25 @@ public class GeneralManager : MonoBehaviour
         (GameObject portrait, CharacterToken token) value = portraitOrder.ElementAt(0);
         value.portrait.GetComponent<Outline>().effectColor = Color.white;
         initiativeBar.UpdateScroll();
-        menuManager.SetCreature(value.token);
+        if (value.token.isOwned)
+        {
+            btnEndTurn.gameObject.SetActive(true);
+            menuManager.SetCreature(value.token);
+        }
+        else
+        {
+            btnEndTurn.gameObject.SetActive(false);
+        }
         value.token.creature.StartTurn();
     }
 
     private GameObject CreatePortrait(CharacterToken token)
     {
-        ICreature creature = token.creature;
+        BaseCreature creature = token.creature;
         var entry = Instantiate(initiativePortraitPrefab, initiativeBarContent.transform);
 
         entry.transform.Find("CharPortrait").GetComponent<RawImage>().texture = TextureMemorizer.textures[creature.ImagePath];
         entry.GetComponent<CharacterPortrait>().CharacterToken = token;
-        entry.GetComponent<CharacterPortrait>().CameraRig = cameraController;
 
         Outline outline = entry.GetComponent<Outline>();
 
@@ -128,7 +138,20 @@ public class GeneralManager : MonoBehaviour
         return entry;
     }
 
-    public void UpdateInitiative(CharacterToken token) {
+    public void RemovePortrait(CharacterToken token)
+    {
+        for (int i = 0; i < portraitOrder.Count; i++)
+        {
+            if (portraitOrder[i].token == token)
+            {
+                Destroy(portraitOrder[i].portrait);
+                portraitOrder.RemoveAt(i);
+                break;
+            }
+        }
+    }
+
+    /*public void UpdateInitiative(CharacterToken token) {
         if (!InCombat)
         {
             return;
@@ -154,9 +177,9 @@ public class GeneralManager : MonoBehaviour
 
         initiativeOrder.Insert(insertIndex, entry);
         portraitOrder.Insert(insertIndex, (CreatePortrait(token), token));
-    }
+    }*/
 
-    public void EndTurn() {
+    /*public void EndTurn() {
         if (initiativeOrder.Count == 0)
         {
             return;
@@ -175,9 +198,35 @@ public class GeneralManager : MonoBehaviour
         {
             HighlightFirst();
         }
+    }*/
+
+    public void SyncPortraitsWithOrder(IList<CharacterToken> tokens)
+    {
+        // Clear current UI
+        foreach (Transform child in initiativeBar.content.transform)
+            Destroy(child.gameObject);
+
+        portraitOrder.Clear();
+        foreach (var token in tokens)
+        {
+            var portrait = CreatePortrait(token);
+            portraitOrder.Add((portrait, token));
+        }
+
+        HighlightFirst();
+    }
+
+    public void OnEndTurnButtonClicked()
+    {
+        if (NetworkClient.localPlayer is NetworkIdentity identity)
+            identity.connectionToServer.identity.GetComponent<CampaignPlayer>().CmdRequestEndTurn();
     }
 
     public CharacterToken GetCurrentToken() {
-        return initiativeOrder.First().token;
+        if (portraitOrder == null || portraitOrder.Count == 0)
+        {
+            return null;
+        }
+        return portraitOrder.First().token;
     }
 }

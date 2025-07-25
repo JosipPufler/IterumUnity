@@ -1,5 +1,9 @@
+using Assets.Scripts.GameLogic.models.actions;
+using Assets.Scripts.GameLogic.models.interfaces;
+using Assets.Scripts.GameLogic.models.items;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,13 +13,25 @@ namespace Iterum.models
 {
     public class WeaponSet
     {
-        public IList<IWeapon> Weapons { get; set; }
-        public ICreature creature;
+        public IList<BaseWeapon> Weapons { get; set; } = new List<BaseWeapon>();
+        [JsonIgnore]
+        public BaseCreature creature;
 
-        public WeaponSet(ICreature creature)
+        public void SetCreature(BaseCreature baseCreature) { 
+            creature = baseCreature;
+            foreach (var weapon in Weapons)
+            {
+                weapon.Creature = baseCreature;
+            }
+        }
+
+        public WeaponSet(BaseCreature creature)
         {
             this.creature = creature;
-            Weapons = new List<IWeapon>();
+            foreach (var weapon in Weapons)
+            {
+                weapon.Creature = creature;
+            }
         }
 
         public WeaponSet(){}
@@ -37,7 +53,7 @@ namespace Iterum.models
             return freeWeaponSlots;
         }
 
-        public bool AddWeapon(IWeapon weapon)
+        public bool AddWeapon(BaseWeapon weapon)
         {
             if (weapon.CanEquip(creature) && CalculateFreeWeaponSlots().TryGetValue(weapon.WeaponSlotDetails.Slot, out int numberOfFreeSlots) && numberOfFreeSlots >= weapon.WeaponSlotDetails.SlotsNeeded)
             {
@@ -48,7 +64,7 @@ namespace Iterum.models
             return false;
         }
 
-        public bool EquipWeapon(IWeapon weapon, IList<IItem> source)
+        public bool EquipWeapon(BaseWeapon weapon, IList<IItem> source)
         {
             if (!source.Contains(weapon))
             {
@@ -63,16 +79,9 @@ namespace Iterum.models
             return false;
         }
 
-        public void UnequipWeapon(IDictionary<IItem, int> targetInventory, IWeapon weapon)
+        public void UnequipWeapon(List<BaseItem> targetInventory, BaseWeapon weapon)
         {
-            if (targetInventory.ContainsKey(weapon))
-            {
-                targetInventory[weapon] += 1;
-            }
-            else
-            {
-                targetInventory[weapon] = 1;
-            }
+            targetInventory.Add(weapon);
             Weapons.Remove(weapon);
         }
 
@@ -83,10 +92,10 @@ namespace Iterum.models
 
         public IList<IAction> GetActions()
         {
-            List<IAction> actions = new List<IAction>();
+            List<IAction> actions = new();
             foreach (IWeapon weapon in Weapons)
             {
-                actions.AddRange(weapon.Actions);
+                actions.AddRange(weapon.WeaponActions);
             }
             return actions;
         }

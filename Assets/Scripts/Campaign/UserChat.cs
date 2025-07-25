@@ -1,3 +1,5 @@
+using Assets.Scripts.Campaign;
+using Mirror;
 using System;
 using TMPro;
 using UnityEngine;
@@ -12,9 +14,13 @@ public class UserChat : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Return) && EventSystem.current.currentSelectedGameObject == chatInput.gameObject && !string.IsNullOrEmpty(chatInput.text)) {
-            
-             AddEntry($"{PlayerPrefs.GetString("username")}: {chatInput.text}", true);
+        if (Input.GetKeyDown(KeyCode.Return) &&
+            EventSystem.current.currentSelectedGameObject == chatInput.gameObject &&
+            !string.IsNullOrEmpty(chatInput.text))
+        {
+            var player = NetworkClient.connection.identity.GetComponent<CampaignPlayer>();
+            string username = PlayerPrefs.GetString("username");
+            player.CmdSendChatMessage(username, chatInput.text);
             chatInput.text = "";
         }
     }

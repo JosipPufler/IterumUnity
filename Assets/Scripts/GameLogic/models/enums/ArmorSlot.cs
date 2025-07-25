@@ -36,5 +36,14 @@ namespace Iterum.models.enums
         };
 
         public override string ToString() => Name;
+
+        public override bool Equals(object obj) => obj is ArmorSlot other && Equals(other);
+
+        public bool Equals(ArmorSlot other) => Name == other.Name;
+
+        public override int GetHashCode() => Name.GetHashCode();
+
+        public static bool operator ==(ArmorSlot left, ArmorSlot right) => left.Equals(right);
+        public static bool operator !=(ArmorSlot left, ArmorSlot right) => !(left == right);
     }
 }

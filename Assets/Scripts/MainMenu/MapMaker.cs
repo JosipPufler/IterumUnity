@@ -4,7 +4,6 @@ using Iterum.Scripts.Map;
 using Iterum.Scripts.UI;
 using Iterum.Scripts.Utils.Managers;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -23,7 +22,15 @@ public class MapMaker : MonoBehaviour
     {
         btnCreate.onClick.AddListener(() => {
             if (!string.IsNullOrEmpty(ifMapName.text)) {
-                MapManager.Instance.CreateMap(new MapDto(ifMapName.text, new List<Hex>(), true), AddEntry, OnError);
+                MapDto newMap = new()
+                {
+                    Name = ifMapName.text,
+                    Hexes = new(),
+                    IsFlatTopped = true,
+                    MaxX = 20,
+                    MaxY = 20,
+                };
+                MapManager.Instance.CreateMap(newMap, AddEntry, OnError);
                 ifMapName.text = "";
             }
         });

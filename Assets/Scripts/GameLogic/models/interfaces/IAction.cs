@@ -1,17 +1,14 @@
 using Assets.Scripts.GameLogic.models;
-using Assets.Scripts.GameLogic.models.target;
-using Iterum.models.enums;
-using Mirror.BouncyCastle.Asn1.X509;
+using Assets.Scripts.Utils.converters;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine.InputSystem.Controls;
 
 namespace Iterum.models.interfaces
 {
     public interface IAction
     {
+        string ID { get; }
         string Name { get; }
         string Description { get; }
         int ApCost { get; }
@@ -21,7 +18,7 @@ namespace Iterum.models.interfaces
 
         int GetNumberOFTargets(IDictionary<TargetData, int> targetTypes);
 
-        bool CanTakeAction(ICreature actionable);
+        bool CanTakeAction(BaseCreature actionable);
 
         bool ValidateTargets(ActionInfo actionInfo);
 

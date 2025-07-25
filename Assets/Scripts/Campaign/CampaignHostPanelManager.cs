@@ -1,7 +1,9 @@
 using Assets.DTOs;
+using Assets.Scripts.Campaign;
 using Assets.Scripts.GameLogic.models.creatures;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.Utils;
+using Assets.Scripts.Utils.converters;
 using Assets.Scripts.Utils.Managers;
 using Iterum.DTOs;
 using Iterum.models.creatures;
@@ -9,7 +11,7 @@ using Iterum.models.interfaces;
 using Iterum.Scripts.UI;
 using Iterum.Scripts.Utils;
 using Iterum.Scripts.Utils.Managers;
-using Mirror.Examples.CharacterSelection;
+using Mirror;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -19,10 +21,15 @@ using UnityEngine.UI;
 
 public class CampaignHostPanelManager : MonoBehaviour
 {
+    [Header("Objects")]
+    public Button hostPanelButton;
+    public GameObject hostPanel;
+
     [Header("Map")]
     public GameObject mapContent;
     public GameObject mapEntryTemplate;
     public CampaignGridLayout campaignGridLayout;
+    public NetworkCampaignGrid networkGrid;
 
     [Header("Assets")]
     public GameObject imageContent;
@@ -45,55 +52,111 @@ public class CampaignHostPanelManager : MonoBehaviour
     public GameObject content;
     public GeneralManager generalManager;
 
+    [Header("Player")]
+    public GameObject playerPanel;
+    public GameObject playerPanelCharacters;
+
+    private CampaignPlayer campaignPlayer;
+
     readonly List<Type> creatures = new() { typeof(Wolf), typeof(AlphaWolf) };
 
-    void Start()
+    private void Start()
+    {
+        hostPanelButton.onClick.AddListener(() => {
+            if (campaignPlayer.isCampaignHost)
+            {
+                hostPanel.SetActive(true);
+            }
+            else
+            {
+                playerPanel.SetActive(true);
+            }
+        });
+        hostPanel.SetActive(false);
+    }
+
+    void InitialiseUI()
     {
         dropdown.ClearOptions();
 
         var options = new List<string>(Enum.GetNames(typeof(Team)));
         dropdown.AddOptions(options);
-        dropdown.onValueChanged.AddListener(value => {
-            GameManager.Instance.Team = (Team)value;
-        });
+        dropdown.onValueChanged.AddListener(v => GameManager.Instance.Team = (Team)v);
 
         foreach (var creature in creatures)
         {
             var entry = Instantiate(creatureEntryPrefab, content.transform);
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = StaticUtils.GetDisplayName(creature);
-            entry.GetComponent<Button>().onClick.AddListener(() => {
-                if (GameManager.Instance.SelectedCreature != null && GameManager.Instance.SelectedCreature.GetType() == creature)
-                {
+            entry.GetComponent<Button>().onClick.AddListener(() =>
+            {
+                if (GameManager.Instance.SelectedCreature != null &&
+                    GameManager.Instance.SelectedCreature.GetType() == creature)
                     GameManager.Instance.SelectedCreature = null;
-                }
                 else
                 {
-                    GameManager.Instance.SelectedCreature = (ICreature)Activator.CreateInstance(creature);
+                    GameManager.Instance.SelectedCreature = (BaseCreature)Activator.CreateInstance(creature);
+                    GameManager.Instance.SelectedCharacter = null;
                 }
             });
         }
-
+        
         CharacterManager.Instance.GetCharacters(PopulateCustomCharacters, OnError);
-
-        btnStartCombat.onClick.AddListener(() => generalManager.StartCombatTurn(true));
+        btnStartCombat.onClick.AddListener(OnStartCombatClicked);
 
         FetchAll();
+    }
+
+    public void OnStartCombatClicked()
+    {
+        if (NetworkClient.localPlayer is NetworkIdentity identity)
+            identity.connectionToServer.identity.GetComponent<CampaignPlayer>().CmdRequestStartCombat();
+    }
+
+    public void AttachToLocalPlayer(CampaignPlayer player)
+    {
+        campaignPlayer = player;
+        hostPanel.SetActive(false);
+        playerPanel.SetActive(false);
+        if (!player.isCampaignHost)
+        {
+            if (GameManager.Instance.SelectedCharacter != null && ConverterUtils.TryParseCreature(GameManager.Instance.SelectedCharacter.Data, out BaseCreature creature))
+            {
+                var character = GameManager.Instance.SelectedCharacter;
+                var entry = Instantiate(creatureEntryPrefab, playerPanelCharacters.transform);
+                entry.transform.Find("Name").GetComponent<TMP_Text>().text = creature.Name;
+                entry.GetComponent<Button>().onClick.AddListener(() =>
+                {
+                    if (GameManager.Instance.SelectedCreature != null && GameManager.Instance.SelectedCreature.Name == creature.Name)
+                    {
+                        GameManager.Instance.SelectedCreature = null;
+                    }
+                    else
+                    {
+                        GameManager.Instance.SelectedCreature = creature;
+                    }
+                });
+            }
+        }
+        else 
+        {
+            InitialiseUI();
+        }
     }
 
     void PopulateCustomCharacters(List<CharacterDto> characterDtos) {
         foreach (var characterDto in characterDtos)
         {
-            ICreature character = characterDto.MapToCreature();
             var entry = Instantiate(creatureEntryPrefab, content.transform);
-            entry.transform.Find("Name").GetComponent<TMP_Text>().text = character.Name;
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = characterDto.Name;
             entry.GetComponent<Button>().onClick.AddListener(() => {
-                if (GameManager.Instance.SelectedCreature != null && GameManager.Instance.SelectedCreature.Name == character.Name)
+                if (GameManager.Instance.SelectedCharacter != null && GameManager.Instance.SelectedCharacter.Name == characterDto.Name)
                 {
-                    GameManager.Instance.SelectedCreature = null;
+                    GameManager.Instance.SelectedCharacter = null;
                 }
                 else
                 {
-                    GameManager.Instance.SelectedCreature = character;
+                    GameManager.Instance.SelectedCharacter = characterDto;
+                    GameManager.Instance.SelectedCreature = null;
                 }
             });
         }
@@ -126,13 +189,9 @@ public class CampaignHostPanelManager : MonoBehaviour
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = image;
 
             entry.transform.Find("btnShare").GetComponent<Button>()
-                .onClick.AddListener(() => {
-                    var chatEntry = Instantiate(chatLinkPrefab, chatContent.transform);
-                    chatEntry.transform.Find("Name").GetComponent<TMP_Text>().text = image;
-                    chatEntry.GetComponent<Button>().onClick.AddListener(() => {
-                        AssetManager.Instance.GetImage(image, PreviewImage, OnError);
-                    });
-                });
+            .onClick.AddListener(() => {
+                campaignPlayer.CmdSendChatLinkEntry(image, "image");
+            });
 
             entry.transform.Find("btnPreview").GetComponent<Button>()
                 .onClick.AddListener(() =>
@@ -176,14 +235,9 @@ public class CampaignHostPanelManager : MonoBehaviour
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = journal;
 
             entry.transform.Find("btnShare").GetComponent<Button>()
-                .onClick.AddListener(() =>
-                {
-                    var chatEntry = Instantiate(chatLinkPrefab, chatContent.transform);
-                    chatEntry.transform.Find("Name").GetComponent<TMP_Text>().text = journal;
-                    chatEntry.GetComponent<Button>().onClick.AddListener(() => {
-                        JournalManager.Instance.PreviewJournal($"{PlayerPrefs.GetString("username")}/journal/{name}.txt", PreviewJournal, OnError);
-                    });
-                });
+            .onClick.AddListener(() => {
+                campaignPlayer.CmdSendChatLinkEntry(journal, "journal");
+            });
 
             entry.transform.Find("btnPreview").GetComponent<Button>()
                 .onClick.AddListener(() =>
@@ -200,10 +254,29 @@ public class CampaignHostPanelManager : MonoBehaviour
     }
 
     void LoadMap(MapDto mapDto) { 
-        campaignGridLayout.LoadMap(mapDto);
+        networkGrid.CmdLoadMapJson(JsonConvert.SerializeObject(mapDto));
     }
 
     void OnError(string error) {
         Debug.Log(error);
+    }
+
+    public void AddChatLinkEntry(string label, string type)
+    {
+        var chatEntry = Instantiate(chatLinkPrefab, chatContent.transform);
+        chatEntry.transform.Find("Name").GetComponent<TMP_Text>().text = label;
+
+        if (type == "image")
+        {
+            chatEntry.GetComponent<Button>().onClick.AddListener(() => {
+                AssetManager.Instance.GetImage(label, PreviewImage, OnError);
+            });
+        }
+        else if (type == "journal")
+        {
+            chatEntry.GetComponent<Button>().onClick.AddListener(() => {
+                JournalManager.Instance.PreviewJournal($"{PlayerPrefs.GetString("username")}/journal/{label}.txt", PreviewJournal, OnError);
+            });
+        }
     }
 }

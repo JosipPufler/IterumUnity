@@ -1,42 +1,45 @@
 using Assets.Scripts.GameLogic.models;
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.GameLogic.models.items;
+using Assets.Scripts.GameLogic.models.target;
 using Assets.Scripts.GameLogic.utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Attribute = Iterum.models.enums.Attribute;
 
 namespace Iterum.models.actions
 {
-    public class BasicMeleeWeaponAttack : BaseAction
+    public class BasicMeleeWeaponAttack : WeaponAction
     {
-        public BasicMeleeWeaponAttack(IWeapon weapon, string name) : this(weapon, name, $"Attack an enemy with {name} dealing {weapon.GetDamageInfoString()}")
-        {
+        public BasicMeleeWeaponAttack(BaseWeapon weapon, string name) : this(weapon, name, $"Attack an enemy with {name} dealing {weapon.GetDamageInfoString()}"){
+            Initialize();
         }
 
-        public BasicMeleeWeaponAttack(IWeapon weapon, string name, string description)
+        public BasicMeleeWeaponAttack(BaseWeapon weapon, string name, string description)
         {
             this.weapon = weapon;
             Name = name;
             Description = description;
             ApCost = 1;
+            Initialize();
+        }
+
+        public override void Initialize() {
             Action = Func;
         }
 
-        private readonly IWeapon weapon;
-
         public override Dictionary<TargetData, int> TargetTypes => new() { 
-            { new TargetData(TargetType.Creature, 0, 1 + weapon.ReachModifier + weapon.Creature.GetAttributeModifier(Attribute.Reach, false)), 1} 
+            { new TargetData(TargetType.Creature, 0, 1 + weapon.ReachModifier + weapon.Creature.GetAttributeModifier(Attribute.Reach)), 1} 
         };
 
         ActionResult Func(ActionInfo actionInfo) {
-            ICreature targetCreature = (ICreature)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First().Targetable;
+            BaseCreature targetCreature = ((TargetDataSubmissionCreature)actionInfo.Targets.FirstOrDefault(x => x.Key.TargetType == TargetType.Creature).Value.First()).GetToken().creature;
             ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
-            ICreature originCreature = actionInfo.OriginCreature;
+            BaseCreature originCreature = actionInfo.OriginCreature;
 
             if (targetCreature != null && ApCost <= originCreature.CurrentAp && MpCost <= originCreature.CurrentMp)
             {

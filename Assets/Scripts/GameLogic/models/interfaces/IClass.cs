@@ -13,6 +13,6 @@ namespace Iterum.models.interfaces
         Dictionary<DamageCategory, double> DamageCategoryResistances { get; }
 
         bool LevelUp();
-        bool CanJoin(ICreature creature);
+        bool CanJoin(BaseCreature creature);
     }
 }

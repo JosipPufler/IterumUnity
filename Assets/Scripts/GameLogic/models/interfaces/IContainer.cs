@@ -1,9 +1,10 @@
+using Assets.Scripts.GameLogic.models.interfaces;
 using System.Collections.Generic;
 
 namespace Iterum.models.interfaces
 {
     public interface IContainer
     {
-        IDictionary<IItem, int> Inventory { get; }
+        List<BaseItem> Inventory { get; }
     }
 }

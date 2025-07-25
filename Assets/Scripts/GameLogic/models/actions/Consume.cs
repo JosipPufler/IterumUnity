@@ -1,7 +1,7 @@
 using Assets.Scripts.GameLogic.models;
 using Assets.Scripts.GameLogic.models.actions;
-using Iterum.models.enums;
-using Iterum.models.interfaces;
+using Assets.Scripts.GameLogic.models.interfaces;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 
@@ -9,7 +9,7 @@ namespace Iterum.models.actions
 {
     public class Consume : BaseAction
     {
-        public Consume(IConsumable consumable, string description, int apCost, int mpCost, Dictionary<TargetData, int> targetTypes, Func<ActionInfo, ActionResult> func) {
+        public Consume(BaseConsumable consumable, string description, int apCost, int mpCost, Dictionary<TargetData, int> targetTypes, Func<ActionInfo, ActionResult> func) {
             Description = description;
             this.consumable = consumable;
             Name = $"Consume {consumable.Name}";
@@ -19,6 +19,7 @@ namespace Iterum.models.actions
             Action = func;
         }
 
-        IConsumable consumable;
+        [JsonIgnore]
+        public BaseConsumable consumable;
     }
 }

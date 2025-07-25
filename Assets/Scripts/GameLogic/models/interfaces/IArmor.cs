@@ -1,5 +1,4 @@
 using Iterum.models.enums;
-using System.Collections.Generic;
 
 namespace Iterum.models.interfaces
 {

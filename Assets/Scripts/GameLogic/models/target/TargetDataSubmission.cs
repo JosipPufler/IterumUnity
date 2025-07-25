@@ -1,14 +1,17 @@
-﻿namespace Assets.Scripts.GameLogic.models
+﻿using Newtonsoft.Json;
+
+namespace Assets.Scripts.GameLogic.models
 {
     public abstract class TargetDataSubmission
     {
-        public TargetDataSubmission(TargetData targetData, object targetable)
+        protected TargetDataSubmission(){}
+
+        public TargetDataSubmission(TargetData targetData)
         {
             TargetData = targetData;
-            Targetable = targetable;
         }
 
         public TargetData TargetData { get; set; }
-        public virtual object Targetable { get; set; }
+        public abstract object GetTargetable();
     }
 }

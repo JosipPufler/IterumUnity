@@ -8,11 +8,9 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 
 namespace Assets.Scripts.GameLogic.models.actions
 {
@@ -29,7 +27,7 @@ namespace Assets.Scripts.GameLogic.models.actions
         public override ActionResult ExecuteAction(ActionInfo actionInfo)
         {
             ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
-            ICreature originCreature = actionInfo.OriginCreature;
+            BaseCreature originCreature = actionInfo.OriginCreature;
 
             if (ValidateTargets(actionInfo) && CanTakeAction(actionInfo.OriginCreature))
             {
@@ -41,9 +39,9 @@ namespace Assets.Scripts.GameLogic.models.actions
                     ActionPackage actionPackage = CustomTargetTypes[targetData];
                     // If targeting creature
                     if (targetData.TargetType == TargetType.Creature) {
-                        List<ICreature> creatures = actionInfo.Targets[targetData].Select(x => (ICreature)x.Targetable).ToList();
+                        List<BaseCreature> creatures = actionInfo.Targets[targetData].Select(x => ((TargetDataSubmissionCreature)x).GetToken().creature).ToList();
 
-                        foreach (ICreature target in creatures) {
+                        foreach (BaseCreature target in creatures) {
                             // Command: Apply damage and modifiers
                             if (targetData.ActionType == ActionType.Command)
                             {
@@ -72,9 +70,9 @@ namespace Assets.Scripts.GameLogic.models.actions
 
                     else if (targetData.TargetType == TargetType.Tile)
                     {
-                        List<Vector3Int> creatures = actionInfo.Targets[targetData].Select(x => (Vector3Int)x.Targetable).ToList();
+                        List<GridCoordinate> creatures = actionInfo.Targets[targetData].Select(x => (GridCoordinate)x.GetTargetable()).ToList();
 
-                        foreach (Vector3Int target in creatures)
+                        foreach (GridCoordinate target in creatures)
                         {
                             // Command: Apply damage and modifiers
                             if (targetData.ActionType == ActionType.Command)
