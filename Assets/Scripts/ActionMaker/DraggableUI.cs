@@ -13,7 +13,7 @@ namespace Assets.Scripts.ActionMaker
         void Awake()
         {
             rect = GetComponent<RectTransform>();
-            if (!gameObject.TryGetComponent<CanvasGroup>(out CanvasGroup component))
+            if (!gameObject.TryGetComponent(out CanvasGroup component))
             {
                 canvasGroup = gameObject.AddComponent<CanvasGroup>();
             }
@@ -27,7 +27,7 @@ namespace Assets.Scripts.ActionMaker
         {
             originalParent = rect.parent;
             originalPosition = rect.localPosition;
-
+            
             canvasGroup.blocksRaycasts = false;
             rect.SetParent(originalParent.root, true);
         }

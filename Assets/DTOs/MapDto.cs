@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Iterum.Scripts.Map;
+#nullable enable
 
 namespace Iterum.DTOs
 {

@@ -14,6 +14,7 @@ namespace Assets.Scripts.Utils.converters
 
             var noLoopSerializer = new JsonSerializer
             {
+                TypeNameHandling = TypeNameHandling.Auto,
                 ContractResolver = serializer.ContractResolver,
                 ObjectCreationHandling = serializer.ObjectCreationHandling,
                 MissingMemberHandling = serializer.MissingMemberHandling,
@@ -23,15 +24,13 @@ namespace Assets.Scripts.Utils.converters
 
             var weapon = (BaseWeapon)jObject.ToObject(objectType, noLoopSerializer);
 
-            foreach (var a in weapon.WeaponActions)
+            foreach (var a in weapon.Actions)
             {
                 if (a is WeaponAction weaponAction) {
-                    weaponAction.weapon = weapon; 
-                    weaponAction.Initialize();
+                    weaponAction.Weapon = weapon; 
                 }
+                a.Initialize();
             }
-
-            weapon?.Initialize();
 
             return weapon;
         }

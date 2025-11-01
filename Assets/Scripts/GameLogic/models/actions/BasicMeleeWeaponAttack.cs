@@ -7,6 +7,7 @@ using Assets.Scripts.GameLogic.utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using Attribute = Iterum.models.enums.Attribute;
@@ -15,16 +16,19 @@ namespace Iterum.models.actions
 {
     public class BasicMeleeWeaponAttack : WeaponAction
     {
-        public BasicMeleeWeaponAttack(BaseWeapon weapon, string name) : this(weapon, name, $"Attack an enemy with {name} dealing {weapon.GetDamageInfoString()}"){
+        public BasicMeleeWeaponAttack() {
             Initialize();
         }
 
+        public BasicMeleeWeaponAttack(BaseWeapon weapon, string name) : this(weapon, name, $"Attack an enemy with {name} dealing {weapon.GetDamageInfoString()}"){}
+
         public BasicMeleeWeaponAttack(BaseWeapon weapon, string name, string description)
         {
-            this.weapon = weapon;
+            Weapon = weapon;
             Name = name;
             Description = description;
-            ApCost = 1;
+            ApCost = weapon.WeaponTraits.Contains(WeaponTrait.Heavy) ? 3 : 2;
+            
             Initialize();
         }
 
@@ -32,8 +36,14 @@ namespace Iterum.models.actions
             Action = Func;
         }
 
-        public override Dictionary<TargetData, int> TargetTypes => new() { 
-            { new TargetData(TargetType.Creature, 0, 1 + weapon.ReachModifier + weapon.Creature.GetAttributeModifier(Attribute.Reach)), 1} 
+        public override BaseAction Clone()
+        {
+            return new BasicMeleeWeaponAttack(Weapon, Name, Description);
+        }
+
+        [JsonIgnore]
+        public override Dictionary<TargetData, int> TargetTypes => new() {
+            { new TargetData(TargetType.Creature, 0, Weapon.ReachModifier + (Weapon.Creature != null ? Weapon.Creature.GetAttributeModifier(Attribute.Reach) : 0)), 1}
         };
 
         ActionResult Func(ActionInfo actionInfo) {
@@ -41,14 +51,14 @@ namespace Iterum.models.actions
             ActionResultBuilder actionResultBuilder = ActionResultBuilder.Start(actionInfo.OriginCreature);
             BaseCreature originCreature = actionInfo.OriginCreature;
 
-            if (targetCreature != null && ApCost <= originCreature.CurrentAp && MpCost <= originCreature.CurrentMp)
+            if (targetCreature != null)
             {
                 Stat baseStat = Stat.Strength;
-                if (weapon.WeaponTraits.Contains(WeaponTrait.Finnes) && originCreature.GetAttributeModifier(Attribute.Agility) > originCreature.GetAttributeModifier(Attribute.Strength)) { 
+                if (Weapon.WeaponTraits.Contains(WeaponTrait.Finesse) && originCreature.GetAttributeModifier(Attribute.Agility) > originCreature.GetAttributeModifier(Attribute.Strength)) { 
                     baseStat = Stat.Agility;
                 }
 
-                CombatUtils.Attack(originCreature, targetCreature, AttackType.MeleeWeapon(baseStat, originCreature.ProficiencyManager.IsProficient(weapon)), new ActionPackage() { DamageOnSuccess = weapon.DamageInfos }, actionResultBuilder);
+                CombatUtils.Attack(originCreature, targetCreature, AttackType.MeleeWeapon(baseStat, originCreature.ProficiencyManager.IsProficient(Weapon)), new ActionPackage() { DamageOnSuccess = Weapon.DamageInfos }, actionResultBuilder);
                 return actionResultBuilder.Build();
             }
             return actionResultBuilder.Fail().Build();

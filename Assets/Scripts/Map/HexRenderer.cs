@@ -29,10 +29,10 @@ public class HexRenderer : NetworkBehaviour
     private GameObject numberCanvasGO;
     private TextMeshProUGUI numberText;
 
-    private Mesh m_mesh;
-    private MeshFilter m_meshFilter;
-    private MeshRenderer m_meshRenderer;
-    private MeshCollider m_meshCollider;
+    private Mesh mesh;
+    private MeshFilter meshFilter;
+    private MeshRenderer meshRenderer;
+    private MeshCollider meshCollider;
 
     public Material material;
     private Camera mainCam;
@@ -49,8 +49,8 @@ public class HexRenderer : NetworkBehaviour
 
     public override void OnStopClient()
     {
-        base.OnStopClient();
         CampaignGridLayout.Instance.UnregisterHex(positon);
+        base.OnStopClient();
     }
 
     public void Initialize(Material mat, Material borderMat, Material targetMat, float inner, float outer, float height, bool isFlat, float startingY = 0)
@@ -64,25 +64,25 @@ public class HexRenderer : NetworkBehaviour
         isFlatTopped = isFlat;
         this.startingY = startingY;
 
-        m_meshRenderer.material = material;
+        meshRenderer.material = material;
         DrawMesh();
     }
 
     private void Awake()
     {
         mainCam = Camera.main;
-        m_meshFilter = GetComponent<MeshFilter>();
-        m_meshRenderer = GetComponent<MeshRenderer>();
-        m_meshCollider = GetComponent<MeshCollider>();
+        meshFilter = GetComponent<MeshFilter>();
+        meshRenderer = GetComponent<MeshRenderer>();
+        meshCollider = GetComponent<MeshCollider>();
 
-        m_mesh = new Mesh
+        mesh = new Mesh
         {
             name = "Hex"
         };
 
-        m_meshFilter.mesh = m_mesh;
-        m_meshRenderer.material = material;
-        m_meshCollider.sharedMesh = m_mesh;
+        meshFilter.mesh = mesh;
+        meshRenderer.material = material;
+        meshCollider.sharedMesh = mesh;
     }
 
     private void LateUpdate()
@@ -101,10 +101,10 @@ public class HexRenderer : NetworkBehaviour
         DrawFaces();
         CombineFaces();
 
-        if (m_meshCollider == null)
-            m_meshCollider = GetComponent<MeshCollider>();
+        if (meshCollider == null)
+            meshCollider = GetComponent<MeshCollider>();
 
-        m_meshCollider.sharedMesh = m_mesh;
+        meshCollider.sharedMesh = mesh;
     }
 
     private void CombineFaces()
@@ -123,12 +123,12 @@ public class HexRenderer : NetworkBehaviour
             }
         }
 
-        m_mesh.vertices = vertices.ToArray();
-        m_mesh.triangles = triangles.ToArray();
-        m_mesh.uv = uvs.ToArray();
-        m_mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
-        m_mesh.RecalculateNormals();
-        m_mesh.RecalculateBounds();
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.uv = uvs.ToArray();
+        mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
     }
 
     private void DrawFaces()

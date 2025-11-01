@@ -5,35 +5,45 @@ using Iterum.models.interfaces;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Attribute = Iterum.models.enums.Attribute;
+using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Iterum.models
 {
     public class ModifierManager
     {
-        public Dictionary<Attribute, int> BaseAttributes { get; } = new() { { Attribute.ApRegen, 4 } };
-        public Dictionary<Attribute, int> Modifiers { get; } = new();
-        public Dictionary<DamageType, int> DamageTypeModifiers { get; } = new();
-        public Dictionary<DamageCategory, int> DamageCategoryModifiers { get; } = new();
-
-        public Dictionary<AttackTypeEnum, RollType> OutgoingAttackRolls { get; } = new() {
+        [JsonProperty]
+        public Dictionary<Attribute, int> BaseAttributes { get; private set; } = new() { { Attribute.ApRegen, 4 } };
+        [JsonProperty]
+        public Dictionary<Attribute, int> Modifiers { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<DamageType, int> DamageTypeModifiers { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<DamageCategory, int> DamageCategoryModifiers { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<AttackTypeEnum, RollType> OutgoingAttackRolls { get; private set; } = new() {
             { AttackTypeEnum.Spell, RollType.Normal },
             { AttackTypeEnum.MeleeWeapon, RollType.Normal },
             { AttackTypeEnum.RangedWeapon, RollType.Normal },
         };
-        public Dictionary<AttackTypeEnum, RollType> IndboundAttackRolls { get; } = new() { 
+        [JsonProperty]
+        public Dictionary<AttackTypeEnum, RollType> IndboundAttackRolls { get; private set; } = new() { 
             { AttackTypeEnum.Spell, RollType.Normal },
             { AttackTypeEnum.MeleeWeapon, RollType.Normal },
             { AttackTypeEnum.RangedWeapon, RollType.Normal },
-        }; 
-
-        public Dictionary<Attribute, double> Multipliers { get; } = new();
-        public Dictionary<DamageType, double> Resistances { get; } = new();
-        public Dictionary<DamageCategory, double> CategoryResistances { get; } = new();
-        public Dictionary<WeaponSlot, int> WeaponSlots { get; } = new();
-
-        [JsonConverter(typeof(DictionaryKeyArmorSlotConverterInt))]
-        public Dictionary<ArmorSlot, int> ArmorSlots { get; } = new();
+        };
+        [JsonProperty]
+        public Dictionary<Attribute, double> Multipliers { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<DamageType, double> Resistances { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<DamageCategory, double> CategoryResistances { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<WeaponSlot, int> WeaponSlots { get; private set; } = new();
+        [JsonProperty]
+        public Dictionary<ArmorSlot, int> ArmorSlots { get; private set; } = new();
 
         [JsonIgnore]
         public BaseCreature creature;
@@ -54,6 +64,18 @@ namespace Iterum.models
             if (BaseAttributes.TryGetValue(attribute, out int baseAtt))
             {
                 total += baseAtt;
+            }
+            if (creature == null)
+            {
+                Debug.Log("creature is null");
+            }
+            if (creature.Race == null)
+            {
+                Debug.Log("race is null");
+            }
+            if (creature.Race.RacialAttributes == null)
+            {
+                Debug.Log("race attributes is null");
             }
             if (creature.Race.RacialAttributes.TryGetValue(attribute, out int racial))
             {
@@ -122,9 +144,14 @@ namespace Iterum.models
             return total;
         }
 
-        public void SetModifier(Attribute attribute, int modifier)
+        public void AddModifier(Attribute attribute, int modifier)
         {
             Modifiers[attribute] = Modifiers.GetValueOrDefault(attribute) + modifier;
+        }
+
+        public void SetModifier(Attribute attribute, int modifier)
+        {
+            Modifiers[attribute] = modifier;
         }
 
         public void ApplyModifiers(IDictionary<Attribute, int> modifiers) {
@@ -142,13 +169,6 @@ namespace Iterum.models
         public void SetResistance(DamageType damageType, double resistance)
         {
             Resistances[damageType] = Resistances.GetValueOrDefault(damageType) + resistance;
-        }
-
-        public int GetAttackModifier(AttackType attackType)
-        {
-            return GetAttribute(attackType.BaseAttribute.Attribute) 
-                + GetAttribute(attackType.AttackTypeAttribute) 
-                + (attackType.Proficient ? creature.ProficiencyManager.GetProficiencyBonus() : 0);
         }
 
         public int GetAttackDamageModifier(AttackType attackType) {

@@ -1,12 +1,11 @@
 using Assets.Scripts.GameLogic.models;
-using Assets.Scripts.Utils.converters;
-using Newtonsoft.Json;
+using Assets.Scripts.GameLogic.models.interfaces;
 using System;
 using System.Collections.Generic;
 
 namespace Iterum.models.interfaces
 {
-    public interface IAction
+    public interface IAction : ITooltipTarget
     {
         string ID { get; }
         string Name { get; }
@@ -25,7 +24,5 @@ namespace Iterum.models.interfaces
         ActionResult ExecuteAction(ActionInfo actionInfo);
 
         string GetCostString();
-
-        string GetLongDescription();
     }
 }

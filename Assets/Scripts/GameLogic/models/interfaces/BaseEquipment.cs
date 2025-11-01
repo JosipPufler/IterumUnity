@@ -7,11 +7,13 @@ namespace Assets.Scripts.GameLogic.models.interfaces
 {
     public class BaseEquipment : BaseItem, IEquipment
     {
+        public override bool Stackable { get; set; } = false;
+
         public virtual Dictionary<Attribute, int> AttributeModifiers { get; set; } = new();
 
         public virtual Dictionary<Attribute, double> AttributeMultipliers { get; set; } = new();
 
-        public virtual IList<BaseAction> Actions { get; set; } = new List<BaseAction>();
+        public virtual List<BaseAction> Actions { get; set; } = new List<BaseAction>();
 
         public virtual bool CanEquip(BaseCreature creature)
         {

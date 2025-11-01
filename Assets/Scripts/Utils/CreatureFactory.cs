@@ -14,6 +14,7 @@ namespace Assets.Scripts.Utils
         private static readonly HashSet<Type> creatures = new() { typeof(Wolf), typeof(AlphaWolf) };
 
         public static readonly Dictionary<string, Func<BaseCreature>> builtIns = new();
+        private static readonly object[] args = { true };
 
         static CreatureFactory()
         {
@@ -25,7 +26,7 @@ namespace Assets.Scripts.Utils
             {
                 if (typeof(BaseCreature).IsAssignableFrom(type))
                 {
-                    builtIns.Add(type.Name, () => (BaseCreature)Activator.CreateInstance(type));
+                    builtIns.Add(type.Name, () => (BaseCreature)Activator.CreateInstance(type, args));
                 }
             }
         }

@@ -21,7 +21,7 @@ namespace Assets.Scripts.GameLogic.models.target
             }
         }
 
-        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, AttackType attackType) : base(TargetType.Tile, minDistance, maxDistance)
+        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, AttackType attackType) : base(targetType, minDistance, maxDistance)
         {
             AttackType = attackType;
             ActionType = ActionType.Attack;
@@ -37,7 +37,7 @@ namespace Assets.Scripts.GameLogic.models.target
             }
         }
 
-        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, SavingThrow savingThrow) : base(TargetType.Tile, minDistance, maxDistance)
+        public CustomTargetData(TargetType targetType, int minDistance, int maxDistance, int variable, SavingThrow savingThrow) : base(targetType, minDistance, maxDistance)
         {
             SavingThrow = savingThrow;
             ActionType = ActionType.SavingThrow;

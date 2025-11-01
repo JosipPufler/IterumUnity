@@ -1,16 +1,22 @@
-﻿namespace Assets.DTOs
+﻿using Assets.Scripts.Utils;
+using Iterum.models.interfaces;
+using Newtonsoft.Json;
+
+namespace Assets.DTOs
 {
     public class CharacterDto
     {
         public CharacterDto(){}
 
-        public CharacterDto(string id, string name, int level, bool isPlayer, string data)
-        {
-            Id = id;
-            Name = name;
-            Level = level;
-            IsPlayer = isPlayer;
-            Data = data;
+        public CharacterDto(BaseCreature creature) {
+            if (creature.CharacterId != null)
+            {
+                Id = creature.CharacterId;
+            }
+            Name = creature.Name;
+            Level = creature.ClassManager.GetLevel();
+            IsPlayer = creature.IsPlayer;
+            Data = JsonConvert.SerializeObject((object)creature, JsonSerializerSettingsProvider.GetSettings());
         }
 
         public string? Id { get; set; }
@@ -18,5 +24,6 @@
         public int Level { get; set; }
         public bool IsPlayer { get; set; }
         public string Data { get; set; }
+        public long OwnerId { get; set; }
     }
 }

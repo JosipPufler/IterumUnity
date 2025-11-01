@@ -3,8 +3,6 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.models.items;
 using Iterum.models.races;
-using Newtonsoft.Json;
-using UnityEngine;
 
 namespace Assets.Scripts.GameLogic.models.creatures
 {
@@ -12,13 +10,20 @@ namespace Assets.Scripts.GameLogic.models.creatures
     {
         public new static string DisplayName { get; private set; } = "Alpha wolf";
 
-        public AlphaWolf() : base(new Boring(), DisplayName, "Textures/alphawolf")
+        public AlphaWolf() : base(new Wolf(), DisplayName, "Textures/alphawolf")
         {
-            WeaponSet.AddWeapon(new WolfTeeth());
-            Race.RacialAttributes[Attribute.MaxHp] = 40;
-            CurrentHp = MaxHp;
-            MaxAp = 8;
-            ModifierManager.SetModifier(Attribute.Strength, 4);
+            WeaponSet.AddWeapon(new WolfTeeth(true));
+        }
+
+        public AlphaWolf(bool init) : this()
+        {
+            if (init)
+            {
+                Race.RacialAttributes[Attribute.MaxHp] = 40;
+                CurrentHp = MaxHp;
+                ModifierManager.AddModifier(Attribute.MaxAp, 2);
+                ModifierManager.AddModifier(Attribute.Strength, 4);
+            }
         }
     }
 }

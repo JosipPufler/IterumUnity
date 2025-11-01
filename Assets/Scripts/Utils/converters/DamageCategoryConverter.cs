@@ -17,4 +17,10 @@ namespace Assets.Scripts.Utils.converters
             return DamageCategory.FromName(name);
         }
     }
+
+    public class DictionaryKeyDamageCategoryConverter : DictionaryKeyConverterBase<DamageCategory, double>
+    {
+        protected override string KeyToString(DamageCategory key) => key.Name;
+        protected override DamageCategory StringToKey(string key) => DamageCategory.FromName(key);
+    }
 }

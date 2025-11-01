@@ -2,6 +2,8 @@
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.classes;
 using Assets.Scripts.GameLogic.models.creatures;
+using Assets.Scripts.GameLogic.models.interfaces;
+using Assets.Scripts.GameLogic.models.items;
 using Assets.Scripts.GameLogic.models.races;
 using Assets.Scripts.UI;
 using Assets.Scripts.Utils;
@@ -10,7 +12,6 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.models.races;
 using Iterum.Scripts.Utils.Managers;
-using Newtonsoft.Json;
 using SFB;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,9 @@ namespace Assets.Scripts.MainMenu
 {
     public class CharacterCreator : MonoBehaviour
     {
+        private static readonly int MAX_STATS = 42;
+        private static readonly int BASE_MAX_SKILLS = 6;
+
         [Header("Character")]
         public TMP_InputField characterName;
         public TMP_InputField characterBio;
@@ -35,16 +39,20 @@ namespace Assets.Scripts.MainMenu
         [Header("Class")]
         public TMP_Dropdown classDropdown;
         public GameObject classDescriptionPanel;
+        public TMP_Text classDescription;
 
         [Header("Race")]
         public TMP_Dropdown raceDropdown;
         public GameObject raceDescriptionPanel;
+        public TMP_Text raceDescription;
 
         [Header("Stats and skills")]
         public GameObject skillPrefab;
         public TMP_Text skillDescription;
         public List<StatInputBinding> statInputBindings;
         public List<SkillInputBinding> skillInputBindings;
+        public TMP_Text statText;
+        public TMP_Text skillText;
 
         [Header("Controls")]
         public Button btnCreate;
@@ -57,39 +65,74 @@ namespace Assets.Scripts.MainMenu
         public TMP_Text actionDescription;
         public GameObject actionTogglePrefab;
 
-        private List<Toggle> actionToggles = new();
+        [Header("Items")]
+        public GameObject itemEntryPrefab;
+        public GameObject itemEntryPanel;
+        public TMP_Text itemDescription;
+
+        private readonly List<Toggle> actionToggles = new();
+        private readonly Dictionary<BaseItem, TMP_InputField> itemInputs = new();
 
         private readonly Dictionary<Stat, TMP_InputField> statInputs = new();
         private readonly Dictionary<Skill, Toggle> skillInputs = new();
 
-        private readonly int maxStats = 42;
-        private int totalSkills = 0;
-        private readonly int maxSkills = 6;
+        private int maxSkills = BASE_MAX_SKILLS;
 
         private string selectedFilePath;
 
-        private readonly List<Type> raceList = new() { typeof(Boring) };
-        private readonly List<Type> classList = new() { typeof(Warrior) };
+        private readonly List<BaseRace> raceList = new() { new Human(), new Ork(), new WoodElf(), new SeaElf() };
+        private readonly List<BaseClass> classList = new() { new Warrior(), new Pyromancer() };
 
         public event Action OnInitialized;
         public bool IsInitialized = false;
+        private bool areItemsLoaded = false;
+        private bool areActionsLoaded = false;
+
         private string currentId = null;
 
         private void Start()
         {
+            raceDropdown.onValueChanged.AddListener(index =>
+            {
+                BaseRace race = GetCurrentRace();
+                raceDescription.text = race.Description;
+                foreach (var input in skillInputs)
+                {
+                    input.Value.interactable = true;
+                }
+
+                CheckIfSkillsValid();
+
+                foreach (Skill skill in race.RacialSkills)
+                {
+                    skillInputs[skill].isOn = true;
+                    skillInputs[skill].interactable = false;
+                }
+
+                CheckIfSkillsValid();
+
+                maxSkills = BASE_MAX_SKILLS + race.SkillPointPicks;
+                UpdateInfoData();
+            });
+
+            classDropdown.onValueChanged.AddListener(index =>
+            {
+                classDescription.text = classList.ElementAt(index).Description;
+                UpdateInfoData();
+            });
+
             raceDropdown.ClearOptions();
             List<string> typeNames = raceList.Select(x => x.Name).ToList();
             raceDropdown.AddOptions(typeNames);
+            raceDropdown.onValueChanged.Invoke(raceDropdown.value);
 
             classDropdown.ClearOptions();
-            typeNames = classList.Select(x => x.Name).ToList();
+            typeNames = classList.Select(x => x.ClassName).ToList();
             classDropdown.AddOptions(typeNames);
+            classDropdown.onValueChanged.Invoke(classDropdown.value);
 
             btnCancle.onClick.AddListener(GoBack);
             btnCreate.onClick.AddListener(CreateCreature);
-
-            raceDescriptionPanel.SetActive(false);
-            classDescriptionPanel.SetActive(false);
 
             characterImage.GetComponent<Button>().onClick.AddListener(OpenFileDialogAndShow);
             characterImage.GetComponent<RawImage>().texture = Resources.Load<Texture2D>("Textures/default");
@@ -106,11 +149,11 @@ namespace Assets.Scripts.MainMenu
                     if (isPlayerCharacter.isOn)
                     {
                         int totalStats = GetTotalStats();
-                        Debug.Log(totalStats);
-                        if (totalStats > maxStats)
+                        if (totalStats > MAX_STATS)
                         {
-                            statBinding.inputField.text = (int.Parse(x) - (totalStats - maxStats)).ToString();
+                            statBinding.inputField.text = (int.Parse(x) - (totalStats - MAX_STATS)).ToString();
                         }
+                        statText.text = (MAX_STATS - GetTotalStats()).ToString();
                     }
                 });
             }
@@ -124,7 +167,7 @@ namespace Assets.Scripts.MainMenu
                     var entry = Instantiate(skillPrefab, skillBinding.panel.transform);
 
                     UIOnHover uIOnHover = entry.AddComponent<UIOnHover>();
-                    uIOnHover.onHoverEnter += () => 
+                    uIOnHover.onHoverEnter += () =>
                     {
                         skillDescription.text = skill.Name;
                     };
@@ -141,24 +184,41 @@ namespace Assets.Scripts.MainMenu
                     toggle.isOn = false;
                     toggle.onValueChanged.AddListener(newValue =>
                     {
-                        if (totalSkills == maxSkills && newValue)
+                        if (GetTotalSkills() > maxSkills)
                         {
                             toggle.SetIsOnWithoutNotify(false);
-                            return;
                         }
-                        else if (newValue)
-                        {
-                            totalSkills++;
-                        }
-                        else
-                        {
-                            totalSkills--;
-                        }
+                        skillText.text = (maxSkills - GetTotalSkills()).ToString();
                     });
                 }
             }
 
+            UpdateInfoData();
+
             ActionManager.Instance.GetActions(LoadActionOptions, e => Debug.Log(e));
+            ItemManager.Instance.GetItems(LoadItemOptions, e => Debug.Log(e));
+        }
+
+        private void UpdateInfoData()
+        {
+            statText.text = (MAX_STATS - GetTotalStats()).ToString();
+            skillText.text = (maxSkills - GetTotalSkills()).ToString();
+        }
+
+        public void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+                GoBack();
+        }
+
+        private BaseClass GetCurrentClass()
+        {
+            return classList.ElementAt(classDropdown.value);
+        }
+
+        private BaseRace GetCurrentRace()
+        {
+            return raceList.ElementAt(raceDropdown.value);
         }
 
         private void LoadActionOptions(List<ActionDto> actionDtos) {
@@ -184,14 +244,40 @@ namespace Assets.Scripts.MainMenu
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(actionPanel.transform.parent.GetComponent<RectTransform>());
 
-            OnInitialized?.Invoke();
-            IsInitialized = true;
+            areActionsLoaded = true;
+            CheckIfInitialized();
         }
 
-        public void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Escape))
-                GoBack();
+        private void LoadItemOptions(List<ItemDto> itemDtos) {
+            foreach (var itemDto in itemDtos)
+            {
+                GameObject itemEntry = Instantiate(itemEntryPrefab, itemEntryPanel.transform);
+                itemEntry.transform.GetComponentInChildren<TMP_Text>().text = itemDto.Name;
+                
+                UIOnHover uIOnHover = itemEntry.AddComponent<UIOnHover>();
+                uIOnHover.onHoverEnter += () =>
+                {
+                    itemDescription.text = itemDto.Description;
+                };
+
+                uIOnHover.onHoverExit += () =>
+                {
+                    itemDescription.text = "";
+                };
+                itemInputs.Add(itemDto.MapToBaseItem(), (TMP_InputField)itemEntry.transform.GetComponentInChildren(typeof(TMP_InputField)));
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(actionPanel.transform.parent.GetComponent<RectTransform>());
+
+            areItemsLoaded = true;
+            CheckIfInitialized();
+        }
+
+        public void CheckIfInitialized() {
+            if (areActionsLoaded && areItemsLoaded) { 
+                IsInitialized = true;
+                OnInitialized?.Invoke();
+                UpdateInfoData();
+            }
         }
 
         public void GoBack() { 
@@ -214,8 +300,21 @@ namespace Assets.Scripts.MainMenu
                 inputField.text = "5";
             }
 
+            foreach (TMP_InputField inputField in itemInputs.Values)
+            {
+                inputField.text = "0";
+            }
+
+            foreach (var toggle in actionToggles)
+            {
+                toggle.isOn = false;
+            }
+
             characterName.text = "";
             characterBio.text = "";
+            raceDropdown.value = 0;
+            classDropdown.value = 0;
+
             characterImage.GetComponent<RawImage>().texture = Resources.Load<Texture2D>(selectedFilePath);
         }
 
@@ -225,59 +324,74 @@ namespace Assets.Scripts.MainMenu
                     pair => pair.Key,
                     pair => int.TryParse(pair.Value.text, out int value) ? value : 0
                 );
-            Type selectedRace = raceList[raceDropdown.value];
 
-            object instance = Activator.CreateInstance(selectedRace);
-            BaseRace raceInstance = instance as BaseRace;
+            BaseRace raceInstance = GetCurrentRace();
 
-            Type selectedClass = classList[classDropdown.value];
-
-            instance = Activator.CreateInstance(selectedClass) as BaseClass;
-            BaseClass classInstance = instance as BaseClass;
+            BaseClass classInstance = GetCurrentClass();
 
             AssetManager.Instance.UploadImage(selectedFilePath, null, null);
-            selectedFilePath = $"{PlayerPrefs.GetString("username")}/images/{Path.GetFileName(selectedFilePath)}";
-            BaseCreature character;
+            selectedFilePath = $"{SessionData.Username}/images/{Path.GetFileName(selectedFilePath)}";
+            BaseCreature creature;
             if (isPlayerCharacter.isOn)
             {
-                character = new DownableCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
-                {
-                    IsPlayer = isPlayerCharacter.isOn
-                };
+                creature = new DownableCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text);
             } else {
-                character = new BaseCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text)
-                {
-                    IsPlayer = isPlayerCharacter.isOn
-                };
+                creature = new BaseCreature(raceInstance, characterName.text, selectedFilePath, characterBio.text);
             }
 
-            character.CustomActionIds.Clear();
-            character.CustomActions.Clear();
+            creature.IsPlayer = isPlayerCharacter.isOn;
+            creature.CustomActionIds.Clear();
+            creature.CustomActions.Clear();
             foreach (var toggle in actionToggles.Where(x => x.isOn))
             {
                 CustomBaseAction action = (CustomBaseAction)toggle.GetComponent<DataHolder>().data;
-                character.CustomActionIds.Add(action.Id);
-                character.CustomActions.Add(action);
+                creature.CustomActionIds.Add(action.Id);
+                creature.CustomActions.Add(action);
             }
             
-            character.SetBaseStats(statValues);
+            creature.SetBaseStats(statValues);
             foreach (var skill in skillInputs.Where(x => x.Value.isOn))
             {
-                character.ProficiencyManager.AddSkillProficiency(skill.Key);
+                creature.ProficiencyManager.AddSkillProficiency(skill.Key);
             }
 
-            bool classJoined = character.ClassManager.StartClass(selectedClass);
-            character.Spawn();
+            bool classJoined = creature.ClassManager.StartClass(classInstance.GetType());
 
-            string serializedCharacter = JsonConvert.SerializeObject(character, JsonSerializerSettingsProvider.GetSettings());
+            creature.Inventory.Clear();
+
+            foreach (var itemEntry in itemInputs)
+            {
+                if (int.TryParse(itemEntry.Value.text, out int numberOfItems))
+                {
+                    if (itemEntry.Key is BaseWeapon weapon)
+                    {
+                        for (int i = 0; i < numberOfItems; i++)
+                        {
+                            var copy = new BaseWeapon(weapon);
+                            creature.Inventory.Add(copy);
+                        }
+                    }
+                    else if (itemEntry.Key is BaseConsumable consumable)
+                    {
+                        for (int i = 0; i < numberOfItems; i++)
+                        {
+                            var copy = new BaseConsumable(consumable);
+                            creature.Inventory.Add(copy);
+                        }
+                    }
+                }
+            }
+
+            creature.CharacterId = currentId;
+            creature.Spawn();
 
             if (currentId == null)
             {
-                CharacterManager.Instance.CreateCharacter(new CharacterDto(currentId, character.Name, 1, character.IsPlayer, serializedCharacter), (_) => GoBack(), (e) => Debug.Log(e));
+                CharacterManager.Instance.CreateCharacter(new CharacterDto(creature), _ => GoBack(), e => Debug.Log(e));
             }
             else
             {
-                CharacterManager.Instance.UpdateCharacter(new CharacterDto(currentId, character.Name, 1, character.IsPlayer, serializedCharacter), GoBack, (e) => Debug.Log(e));
+                CharacterManager.Instance.UpdateCharacter(new CharacterDto(creature), GoBack, e => Debug.Log(e));
             }
         }
 
@@ -292,6 +406,35 @@ namespace Assets.Scripts.MainMenu
                 }
             }
             return total;
+        }
+
+        private int GetTotalSkills()
+        {
+            int total = 0;
+            foreach (KeyValuePair<Skill, Toggle> input in skillInputs)
+            {
+                if (input.Value.isOn)
+                {
+                    total++;
+                }
+            }
+            return total - GetCurrentRace().RacialSkills.Count;
+        }
+
+        private void CheckIfSkillsValid() 
+        {
+            if (GetTotalSkills() > maxSkills)
+            {
+                int difference = maxSkills - GetTotalSkills();
+                int turnedOff = 0;
+                foreach (var skillToggle in skillInputs.Where(x => x.Value.enabled && x.Value.isOn))
+                {
+                    skillToggle.Value.isOn = false;
+                    turnedOff++;
+                    if (turnedOff == difference)
+                        return;
+                }
+            }
         }
 
         public void OpenFileDialogAndShow()
@@ -330,7 +473,7 @@ namespace Assets.Scripts.MainMenu
             return null;
         }
 
-        public void LoadCreature(Iterum.models.interfaces.BaseCreature creature, string currentId) {
+        public void LoadCreature(BaseCreature creature, string currentId) {
             this.currentId = currentId;
 
             characterName.text = creature.Name;
@@ -340,8 +483,8 @@ namespace Assets.Scripts.MainMenu
             TextureMemorizer.LoadTexture(creature.ImagePath, (texture) => characterImage.GetComponent<RawImage>().texture = texture);
             IClass characterClass = creature.ClassManager.Classes.First();
 
-            classDropdown.SetValueWithoutNotify(classList.FindIndex(x => x == characterClass.GetType()));
-            raceDropdown.SetValueWithoutNotify(raceList.FindIndex(x => x == creature.Race.GetType()));
+            classDropdown.value = classList.FindIndex(x => x.GetType() == characterClass.GetType());
+            raceDropdown.value = raceList.FindIndex(x => x.GetType() == creature.Race.GetType());
 
             foreach (Skill skill in creature.ProficiencyManager.SkillProficiencies.Keys) {
                 if (skillInputs.TryGetValue(skill, out Toggle toggle))
@@ -368,6 +511,15 @@ namespace Assets.Scripts.MainMenu
             }
             
             isPlayerCharacter.isOn = creature.IsPlayer;
+
+            foreach (var item in itemInputs)
+            {
+                int count = creature.Inventory.Count(x => x.Name == item.Key.Name);
+                if (count > 0)
+                {
+                    item.Value.text = count.ToString(); 
+                }
+            }
         }
     }
 

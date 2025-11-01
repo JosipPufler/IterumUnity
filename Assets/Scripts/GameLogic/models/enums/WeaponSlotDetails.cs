@@ -12,9 +12,9 @@ namespace Iterum.models.enums
 
         public int SlotsNeeded { get; set; }
 
-        public static WeaponSlotDetails OneHand = new WeaponSlotDetails(WeaponSlot.Hand, 1);
-        public static WeaponSlotDetails TwoHand = new WeaponSlotDetails(WeaponSlot.Hand, 2);
-        public static WeaponSlotDetails Special = new WeaponSlotDetails(WeaponSlot.Special, 1);
-        public static WeaponSlotDetails Natural = new WeaponSlotDetails(WeaponSlot.Special, 0);
+        public static WeaponSlotDetails OneHand = new(WeaponSlot.Hand, 1);
+        public static WeaponSlotDetails TwoHand = new(WeaponSlot.Hand, 2);
+        public static WeaponSlotDetails Special = new(WeaponSlot.Special, 1);
+        public static WeaponSlotDetails Natural = new(WeaponSlot.Special, 0);
     }
 }

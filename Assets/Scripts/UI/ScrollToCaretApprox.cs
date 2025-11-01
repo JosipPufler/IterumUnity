@@ -18,7 +18,7 @@ namespace Iterum.Scripts.UI
         void Awake()
         {
             input = GetComponent<TMP_InputField>();
-            input.onValueChanged.AddListener(_ => ScrollApprox());
+            //input.onValueChanged.AddListener(_ => ScrollApprox());
             input.onSelect.AddListener(_ => ScrollApprox());
         }
 

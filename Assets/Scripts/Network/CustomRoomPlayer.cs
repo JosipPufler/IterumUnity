@@ -1,4 +1,5 @@
-﻿using Assets.Scripts.Utils.converters;
+﻿using Assets.Scripts.Utils;
+using Assets.Scripts.Utils.converters;
 using Iterum.models.interfaces;
 using Iterum.Scripts.UI;
 using Mirror;
@@ -22,10 +23,9 @@ namespace Assets.Scripts.Network
         public override void OnStartLocalPlayer()
         {
             base.OnStartLocalPlayer();
-
-            CmdSetName(PlayerPrefs.GetString("username"));
+            CmdSetName(SessionData.Username);
             CmdSetSessionCode(GameManager.Instance.Session.SessionCode);
-            if (GameManager.Instance.Session.Host == PlayerPrefs.GetString("username"))
+            if (GameManager.Instance.Session.Host == SessionData.Username)
             {
                 CmdSetImagePath("Textures/GM");
                 CmdSetCharacterName("Dungeon Master");

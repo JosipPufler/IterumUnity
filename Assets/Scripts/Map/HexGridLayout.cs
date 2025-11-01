@@ -139,7 +139,9 @@ namespace Assets.Scripts.Map
 
         protected static int CubeDistance(GridCoordinate a, GridCoordinate b)
         {
-            return CubeDistance(new Vector2Int(a.x, a.z), new Vector2Int(b.x, b.z));
+            int ax = a.x, az = a.z, ay = -ax - az;
+            int bx = b.x, bz = b.z, by = -bx - bz;
+            return (Mathf.Abs(ax - bx) + Mathf.Abs(ay - by) + Mathf.Abs(az - bz)) / 2;
         }
 
         protected static int CubeDistance(Vector2Int a, Vector2Int b)

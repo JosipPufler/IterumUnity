@@ -5,10 +5,7 @@ namespace Assets.Scripts.GameLogic.models
 {
     public class TargetData
     {
-        public TargetData()
-        {
-            
-        }
+        public TargetData(){}
 
         public TargetData(TargetType targetType, int minDistance, int maxDistance)
         {
@@ -32,7 +29,7 @@ namespace Assets.Scripts.GameLogic.models
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TargetType, MinDistance, MaxDistance);
+            return HashCode.Combine(TargetType, MinDistance, MaxDistance); 
         }
     }
 }

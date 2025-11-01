@@ -17,4 +17,10 @@ namespace Assets.Scripts.Utils.converters
             return DamageType.FromName(name);
         }
     }
+
+    public class DictionaryKeyDamageTypeConverter : DictionaryKeyConverterBase<DamageType, double>
+    {
+        protected override string KeyToString(DamageType key) => key.Name;
+        protected override DamageType StringToKey(string key) => DamageType.FromName(key);
+    }
 }

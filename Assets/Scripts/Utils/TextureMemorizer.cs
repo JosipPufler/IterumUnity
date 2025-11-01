@@ -10,7 +10,7 @@ namespace Assets.Scripts.Utils
         public static Dictionary<string, Texture> textures = new();
 
         private static readonly string defaultImagePath = "Textures/default";
-
+        
         public static void LoadTexture(string textureName, Action<Texture> onTextureFound) {
             if (textures.TryGetValue(textureName, out var texture)) { 
                 onTextureFound.Invoke(texture);
@@ -20,13 +20,13 @@ namespace Assets.Scripts.Utils
 
             if (localTexture != null)
             {
-                textures.Add(textureName, localTexture);
+                textures.TryAdd(textureName, localTexture);
                 onTextureFound(localTexture);
             }
             else
             {
                 AssetManager.Instance.PreviewImage(textureName, texture => {
-                    textures.Add(textureName, texture);
+                    textures.TryAdd(textureName, texture);
                     onTextureFound.Invoke(texture); 
                 }, error => { 
                     Debug.Log(error);
@@ -37,7 +37,7 @@ namespace Assets.Scripts.Utils
                     else
                     {
                         Texture2D defaultLoadedTexture = Resources.Load<Texture2D>(defaultImagePath);
-                        textures.Add(defaultImagePath, defaultLoadedTexture);
+                        textures.TryAdd(defaultImagePath, defaultLoadedTexture);
                         onTextureFound.Invoke(defaultLoadedTexture);
                     }
                 });

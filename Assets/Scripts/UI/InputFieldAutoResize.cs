@@ -27,7 +27,7 @@ namespace Iterum.Scripts.UI
         {
             input = GetComponent<TMP_InputField>();
             rect = GetComponent<RectTransform>();
-            input.onValueChanged.AddListener(_ => Resize());
+            //input.onValueChanged.AddListener(_ => Resize());
             input.onValueChanged.AddListener(s => RenderMarkdown(s));
             input.lineType = TMP_InputField.LineType.MultiLineNewline;
             input.scrollSensitivity = 0f;
@@ -37,7 +37,7 @@ namespace Iterum.Scripts.UI
 
         private void RenderMarkdown(string s)
         {
-            lblRendered.text = MarkDownService.Convert(s);
+            lblRendered.text = MarkdownService.Convert(s);
         }
 
         void Resize()
@@ -45,7 +45,7 @@ namespace Iterum.Scripts.UI
             float preferred = input.textComponent.preferredHeight + padding;
             float newHeight = Mathf.Max(minHeight, preferred);
 
-            float currentScroll = 1f;
+            float currentScroll = 0f;
             if (parentScrollRect != null)
                 currentScroll = parentScrollRect.verticalNormalizedPosition;
 

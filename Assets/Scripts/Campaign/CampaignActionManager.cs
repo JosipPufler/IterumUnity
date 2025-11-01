@@ -1,6 +1,7 @@
 ﻿using Assets.Scripts.GameLogic.models;
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.interfaces;
+using Assets.Scripts.GameLogic.models.items;
 using Assets.Scripts.GameLogic.models.target;
 using Assets.Scripts.Network;
 using Assets.Scripts.Utils;
@@ -27,7 +28,7 @@ namespace Assets.Scripts.Campaign
         [SyncVar]
         public bool LookingForTargets;
         public TargetData CurrentTargetData;
-        public CharacterToken CurrentToken { get; set; }
+        public CharacterToken CurrentToken { get => TurnOrderManager.Instance.GetCurrentCharacter(); } 
         private Queue<TargetData> TargetDataQueue { get; set; } = new Queue<TargetData>();
         private ActionInfo ActionInfo { get; set; }
 
@@ -75,13 +76,13 @@ namespace Assets.Scripts.Campaign
 
         [Command]
         public void CmdSetAction(string actionGuid) {
-            CurrentToken = TurnOrderManager.Instance.GetCurrentCharacter();
-            if (CurrentToken == null)
+            CharacterToken token = CurrentToken;
+            if (token == null)
             {
                 return;
             }
-            BaseCreature creature = CurrentToken.creature;
-            Debug.Log(CurrentToken.creature.Name);
+            BaseCreature creature = token.creature;
+            Debug.Log(token.creature.Name);
             IAction action = creature.GetActions().FirstOrDefault(x => x.ID == actionGuid);
             if (action != null)
             {
@@ -111,14 +112,59 @@ namespace Assets.Scripts.Campaign
                 for (int i = 0; i < targetData.Value; i++)
                     TargetDataQueue.Enqueue(targetData.Key);
             }
-            CurrentTargetData = TargetDataQueue.Dequeue();
-            SetTargetData(CurrentTargetData);
+            if (TargetDataQueue.TryDequeue(out CurrentTargetData))
+            {
+                SetTargetData(CurrentTargetData);
+                string currentTargetJson = JsonConvert.SerializeObject(CurrentTargetData, JsonSerializerSettingsProvider.GetSettings());
+                TargetRpcSetCurrentTarget(connectionToClient, currentTargetJson);
 
-            string currentTargetJson = JsonConvert.SerializeObject(CurrentTargetData, JsonSerializerSettingsProvider.GetSettings());
-            TargetRpcSetCurrentTarget(connectionToClient, currentTargetJson);
+                string targetJson = JsonConvert.SerializeObject(SelectedAction.TargetTypes, JsonSerializerSettingsProvider.GetSettings());
+                TargetRpcSetTargetData(connectionToClient, targetJson);
+            }
+            else
+            {
+                ExecuteCurrentAction();
+            }
+        }
 
-            string targetJson = JsonConvert.SerializeObject(SelectedAction.TargetTypes, JsonSerializerSettingsProvider.GetSettings());
-            TargetRpcSetTargetData(connectionToClient, targetJson);
+        [Command]
+        public void CmdEquipItem(string itemGuid)
+        {
+            CharacterToken token = CurrentToken;
+            BaseCreature creature = token.creature;
+            IItem item = creature.Inventory.FindLast(x => x.ID == itemGuid);
+            if (item != null)
+            {
+                if (item is BaseArmor armor)
+                {
+                    creature.ArmorSet.DonArmor(armor, creature.Inventory);
+                }
+                else if (item is BaseWeapon weapon)
+                {
+                    creature.WeaponSet.EquipWeapon(weapon, creature.Inventory);
+                }
+                token.UpdateCreatureJson();
+            }
+        }
+
+        [Command]
+        public void CmdUnequipItem(string itemGuid)
+        {
+            BaseCreature creature = CurrentToken.creature;
+            BaseWeapon baseWeapon = creature.WeaponSet.Weapons.First(x => x.ID == itemGuid);
+            if (baseWeapon != null) {
+                creature.WeaponSet.UnequipWeapon(creature.Inventory, baseWeapon);
+                CurrentToken.UpdateCreatureJson();
+                return;
+            }
+
+            BaseArmor baseArmor = creature.ArmorSet.GetArmor().First(x => x.ID == itemGuid);
+            if (baseArmor != null)
+            {
+                creature.ArmorSet.DoffArmor(creature.Inventory, baseArmor);
+                CurrentToken.UpdateCreatureJson();
+                return;
+            }
         }
 
         [TargetRpc]
@@ -158,9 +204,7 @@ namespace Assets.Scripts.Campaign
             SelectedAction = null;
             callback = null;
             Consumable = null;
-            CurrentToken = null;
             ClearTargetHighlights();
-            //RpcClearTargetUi();
         }
 
         public void SubmitCreatureTarget(TargetDataSubmissionCreature submission)
@@ -208,25 +252,29 @@ namespace Assets.Scripts.Campaign
             }
             else
             {
-                ActionResult result = DefaultCallback(ActionInfo);
-                string json = JsonConvert.SerializeObject(result.ActionMessages, JsonSerializerSettingsProvider.GetSettings());
-                foreach (CharacterToken token in CampaignGridLayout.Instance.GetCombatants())
-                {
-                    token.creatureJson = JsonConvert.SerializeObject(token.creature, JsonSerializerSettingsProvider.GetSettings());
-                }
-
-                RpcPrintActionResult(json);
-                ClearData();
+                ExecuteCurrentAction();
             }
+        }
+
+        [Server]
+        private void ExecuteCurrentAction()
+        {
+            ActionResult result = callback(ActionInfo);
+            string json = JsonConvert.SerializeObject(result.ActionMessages, JsonSerializerSettingsProvider.GetSettings());
+            foreach (CharacterToken token in CampaignGridLayout.Instance.GetCombatants())
+            {
+                token.UpdateCreatureJson();
+            }
+
+            RpcPrintActionResult(json);
+            ClearData();
         }
 
         [Server]
         private void SetTargetData(TargetData targetData) {
             if (targetData.TargetType == TargetType.Creature)
             {
-                Debug.Log(CurrentToken.creature.Name);
                 HighlightedTokens = CampaignGridLayout.Instance.GetTokensInRing(CurrentToken.position, targetData.MinDistance, targetData.MaxDistance).ToList();
-                Debug.Log(HighlightedTokens.Count);
                 foreach (var creatureToken in HighlightedTokens)
                 {
                     creatureToken.forceOutline = true;

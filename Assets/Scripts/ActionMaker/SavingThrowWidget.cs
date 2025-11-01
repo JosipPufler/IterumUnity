@@ -13,12 +13,13 @@ namespace Assets.Scripts.ActionMaker
     {
         public TMP_Dropdown originStatDropdown;
         public TMP_Dropdown saveStatDropdown;
+        public TMP_InputField ifBaseDc;
 
         List<Stat> stats;
 
         public override CustomTargetData GetCustomTargetData()
         {
-            SavingThrow savingThrow = new(stats.ElementAt(originStatDropdown.value), stats.ElementAt(saveStatDropdown.value));
+            SavingThrow savingThrow = new(int.Parse(ifBaseDc.text), stats.ElementAt(originStatDropdown.value), stats.ElementAt(saveStatDropdown.value));
             if (supportedTargetTypes[targetTypeDropdown.value] == TargetType.Tile)
             {
                 return new CustomTargetData(supportedTargetTypes[targetTypeDropdown.value], int.Parse(ifMinDistance.text), int.Parse(ifMaxDistance.text), int.Parse(ifRadius.text), savingThrow);

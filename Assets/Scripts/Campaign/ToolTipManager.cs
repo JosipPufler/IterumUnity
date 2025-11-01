@@ -13,13 +13,13 @@ public class ToolTipManager : MonoBehaviour
     public GameObject tooltipPanel;
     public TextMeshProUGUI tooltipText;
     public Vector2 offset;
-    public float maxTooltipWidth = 300f;
+    public float maxTooltipWidth = 600f;
 
     [Header("Raycast Settings")]
     public LayerMask tokenMask;
     public float hoverGrace = 0.1f;
 
-    private ToolTipTrigger currentHover;
+    private ToolTipTrigger3D currentHover;
     private float lastHitTime;
     private RectTransform panelRect;
 
@@ -51,7 +51,7 @@ public class ToolTipManager : MonoBehaviour
 
             if (Physics.Raycast(ray, out var hit, Mathf.Infinity, tokenMask, QueryTriggerInteraction.Ignore) && !EventSystem.current.IsPointerOverGameObject())
             {
-                if (hit.collider.TryGetComponent<ToolTipTrigger>(out var trig))
+                if (hit.collider.TryGetComponent<ToolTipTrigger3D>(out var trig))
                 {
                     if (trig != currentHover)
                     {
@@ -115,7 +115,7 @@ public class ToolTipManager : MonoBehaviour
 
         Vector2 clampedPos = mousePos;
         clampedPos.x = Mathf.Clamp(clampedPos.x, 0, screenSize.x - panelSize.x * scale);
-        clampedPos.y = Mathf.Clamp(clampedPos.y, panelSize.y * scale, screenSize.y);
+        clampedPos.y = Mathf.Clamp(clampedPos.y, -panelSize.y * scale, screenSize.y);
 
         panelRect.position = clampedPos;
     }

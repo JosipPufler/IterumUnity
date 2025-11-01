@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Utils;
 using Newtonsoft.Json;
-using Unity.VisualScripting;
 
 namespace Iterum.models.enums
 {
@@ -94,5 +93,10 @@ namespace Iterum.models.enums
         public static Skill FromAttribute(Attribute attribute) =>
             GetAllSkills().FirstOrDefault(s => s.Attribute.Equals(attribute))
             ?? throw new ArgumentException($"Unknown skill attribute: {attribute}");
+
+        public override bool Equals(object obj)
+        {
+            return obj is Skill skill && skill.Name == Name && skill.Stat == Stat && skill.Attribute == Attribute;
+        }
     }
 }

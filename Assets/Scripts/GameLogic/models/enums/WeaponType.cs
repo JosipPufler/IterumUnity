@@ -9,6 +9,7 @@
         Dagger,
         Mace,
         Maul,
-        Hammer
+        Hammer,
+        Axe
     }
 }

@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.actions;
 using Iterum.models.actions;
 using System.Collections.Generic;
 
@@ -5,7 +6,7 @@ namespace Iterum.models.interfaces
 {
     public interface IConsumable : IItem
     {
-        Consume ConsumeAction { get; }
+        IAction ConsumeAction { get; }
         ActionResult Consume(List<IItem> source, ActionInfo actionInfo)
         {
             if (source.Contains(this))

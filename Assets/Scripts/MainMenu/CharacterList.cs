@@ -84,12 +84,12 @@ namespace Assets.Scripts.MainMenu
                 creator.LoadCreature(selectedCreature, selectedId);
             } else
                 creator.OnInitialized += OnInitializedLoadCharacter;
-            gameObject.SetActive(false);
         }
 
         void OnInitializedLoadCharacter() {
             creator.LoadCreature(selectedCreature, selectedId);
             creator.OnInitialized -= OnInitializedLoadCharacter;
+            gameObject.SetActive(false);
         }
 
         void DeleteCharacter(CharacterDto characterDto, Transform transform)

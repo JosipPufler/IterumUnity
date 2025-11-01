@@ -12,11 +12,11 @@ namespace Assets.Scripts.Utils
             BuildPlayerOptions buildPlayerOptions = new()
             {
                 scenes = new[]
-            {
-                "Assets/Scenes/MainMenu.unity",
-                "Assets/Scenes/Lobby.unity",
-                "Assets/Scenes/Campaign.unity", 
-            },
+                {
+                    "Assets/Scenes/MainMenu.unity",
+                    "Assets/Scenes/Lobby.unity",
+                    "Assets/Scenes/Campaign.unity", 
+                },
                 locationPathName = "Build/Server/HeadlessServer.exe",
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.Development

@@ -22,6 +22,7 @@ public class CameraController : MonoBehaviour
     private Vector3 newZoom;
     private Quaternion targetCameraRotation;
     public bool IsCameraMoving { get; private set; } = true;
+    private bool isMovingInputActive;
 
     private bool isometric = true;
 
@@ -46,29 +47,35 @@ public class CameraController : MonoBehaviour
         else { 
             movementSpeed = normalSpeed;
         }
+        isMovingInputActive = false;
 
         if (Input.GetKey(KeyCode.W)) {
             newPosition += transform.forward * movementSpeed;
+            isMovingInputActive = true;
         }
         
         if (Input.GetKey(KeyCode.D))
         {
             newPosition += transform.right * movementSpeed;
+            isMovingInputActive = true;
         }
 
         if (Input.GetKey(KeyCode.A))
         {
             newPosition += transform.right * -movementSpeed;
+            isMovingInputActive = true;
         }
 
-        if (Input.GetKey(KeyCode.S))
+        if (Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.LeftControl))
         {
             newPosition += transform.forward * -movementSpeed;
+            isMovingInputActive = true;
         }
 
         if (Input.GetKey(KeyCode.Q))
         {
             IsCameraMoving = true;
+            isMovingInputActive = true;
             if (isometric)
             {
                 newRotation *= Quaternion.Euler(Vector3.up * rotationSpeed);
@@ -81,6 +88,7 @@ public class CameraController : MonoBehaviour
         if (Input.GetKey(KeyCode.E))
         {
             IsCameraMoving = true;
+            isMovingInputActive = true;
             if (isometric)
             {
                 newRotation *= Quaternion.Euler(Vector3.up * -rotationSpeed);
@@ -124,8 +132,13 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        transform.SetPositionAndRotation(Vector3.Lerp(transform.position, newPosition, Time.deltaTime * movementTime), Quaternion.Lerp(transform.rotation, newRotation, Time.deltaTime * movementTime));
-        cameraTransform.SetLocalPositionAndRotation(Vector3.Lerp(cameraTransform.localPosition, newZoom, Time.deltaTime * movementTime), Quaternion.Lerp(cameraTransform.localRotation, targetCameraRotation, Time.deltaTime * movementTime));
+            transform.SetPositionAndRotation(
+                Vector3.Lerp(transform.position, newPosition, Time.deltaTime * movementTime),
+                Quaternion.Lerp(transform.rotation, newRotation, Time.deltaTime * movementTime));
+
+            cameraTransform.SetLocalPositionAndRotation(
+                Vector3.Lerp(cameraTransform.localPosition, newZoom, Time.deltaTime * movementTime),
+                Quaternion.Lerp(cameraTransform.localRotation, targetCameraRotation, Time.deltaTime * movementTime));
         transform.position = RoundVector3(transform.position, 0.01f);
         cameraTransform.localPosition = RoundVector3(cameraTransform.localPosition, 0.01f);
 

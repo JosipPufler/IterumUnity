@@ -62,6 +62,11 @@ namespace Assets.Scripts.Map
             LayoutGrid();
             if (GameManager.Instance != null && GameManager.Instance.SelectedMap.IsValid() && GameManager.Instance.SelectedMap.Hexes != null)
             {
+                ifX.text = GameManager.Instance.SelectedMap.MaxX.ToString();
+                ifY.text = GameManager.Instance.SelectedMap.MaxY.ToString();
+                gridSize.x = GameManager.Instance.SelectedMap.MaxX;
+                gridSize.y = GameManager.Instance.SelectedMap.MaxY;
+                LayoutGrid();
                 foreach (Hex hex in GameManager.Instance.SelectedMap.Hexes)
                 {
                     TryAddHex(new GridCoordinate(hex.X, hex.Y, hex.Z));

@@ -1,49 +1,36 @@
 using Iterum.models.enums;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
+using Random = System.Random;
 
 namespace Iterum.utils
 {
-    internal static class DiceUtils
+    public static class DiceUtils
     {
-        static Random random = new Random();
+        static readonly Random random = new();
 
-        public static IList<int> RollMultiple(int numberOfDice, Dice die, RollType rollType) { 
-            IList<int> listOfRolls = new List<int>();
+        private static int RollOnce(Dice die) => random.Next(1, (int)die + 1);
+
+        public static int Roll(Dice die, RollType rollType = RollType.Normal) {
+            int firstRoll = RollOnce(die);
+            return rollType switch
+            {
+                RollType.Normal => firstRoll,
+                RollType.Advantage => Math.Max(firstRoll, RollOnce(die)),
+                RollType.Disadvantage => Math.Min(firstRoll, RollOnce(die)),
+                _ => throw new Exception("Unsupported roll type"),
+            };
+        }
+
+        public static IEnumerable<int> RollMultiple(int numberOfDice, Dice die, RollType rollType)
+        {
+            List<int> listOfRolls = new();
             for (int i = 0; i < numberOfDice; i++)
             {
                 listOfRolls.Add(Roll(die, rollType));
             }
             return listOfRolls;
-        }
-
-        public static int Roll(Dice die, RollType rollType = RollType.Normal) {
-            int roll = random.Next(1, (int)die);
-            
-            switch (rollType)
-            {
-                case RollType.Advantage:
-                    int rollWithAdvantage = random.Next(1, (int)die + 1);
-                    if (rollWithAdvantage >= roll)
-                    {
-                        return rollWithAdvantage;
-                    }
-                    return roll;
-                
-                case RollType.Normal:
-                    return roll;
-
-                case RollType.Disadvantage:
-                    int rollWithDisadvantage = random.Next(1, (int)die + 1);
-                    if (rollWithDisadvantage <= roll)
-                    {
-                        return rollWithDisadvantage;
-                    }
-                    return roll;
-                
-                default:
-                    throw new Exception("Unsupported roll type");
-            }
         }
     }
 }

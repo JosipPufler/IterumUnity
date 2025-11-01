@@ -13,7 +13,7 @@ Shader "Unlit/CustomOutlineShader"
         Pass
         {
             Name "Outline"
-            Cull Front               // Render the backfaces
+            Cull Front
             ZTest LEqual
             ZWrite Off
             Blend SrcAlpha OneMinusSrcAlpha

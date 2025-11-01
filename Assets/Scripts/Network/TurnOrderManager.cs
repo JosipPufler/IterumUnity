@@ -1,4 +1,6 @@
 ﻿// Assets/Scripts/Utils/TurnOrderManager.cs
+using Assets.DTOs;
+using Iterum.Scripts.Utils.Managers;
 using Mirror;
 using System.Collections;
 using System.Collections.Generic;
@@ -109,6 +111,11 @@ namespace Assets.Scripts.Network
             else
             {
                 StartTurn();
+            }
+            Debug.Log($"Combatants to Update: {allCombatants.Where(x => x.creature.IsPlayer).Count()}");
+            foreach (CharacterToken character in allCombatants.Where(x => x.creature.IsPlayer))
+            {
+                CharacterManager.Instance.UpdateCharacter(new CharacterDto(character.creature), () => Debug.Log($"{character.creature.Name} updated"), error => Debug.Log(error));
             }
         }
 

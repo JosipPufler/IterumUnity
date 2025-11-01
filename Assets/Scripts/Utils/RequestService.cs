@@ -5,6 +5,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 using Newtonsoft.Json;
+using Assets.Scripts.Utils;
 
 namespace Iterum.Scripts.Utils
 {
@@ -51,7 +52,7 @@ namespace Iterum.Scripts.Utils
             
 
             if (requiresAuthorization)
-                request.SetRequestHeader("Authorization", PlayerPrefs.GetString("token"));
+                request.SetRequestHeader("Authorization", SessionData.Token);
 
             onReady?.Invoke(request);
             yield break;

@@ -13,6 +13,12 @@ namespace Assets.Scripts
             y = vector3.y; 
             z = vector3.z;
         }
+        public GridCoordinate(Vector3 vector3)
+        {
+            x = (int)vector3.x;
+            y = (int)vector3.y;
+            z = (int)vector3.z;
+        }
         public GridCoordinate(int x, int y, int z)
         {
             this.x = x;

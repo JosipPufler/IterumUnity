@@ -113,7 +113,15 @@ namespace Iterum.utils
         {
             foreach (var damageResult in actionResult.AmountDamaged)
             {
-                actionResult.ActionMessages.Add($"{actionResult.Source.Name} dealt {damageResult.Value.Sum(x => x.Amount)} damage to {damageResult.Key.Name}");
+                int? originalDamage = damageResult.Value.Where(x => x.OriginalAmount != null).Sum(x => x.OriginalAmount);
+                if (damageResult.Value.Where(x => x.OriginalAmount != null).Count() > 0)
+                {
+                    actionResult.ActionMessages.Add($"{actionResult.Source.Name} dealt {damageResult.Value.Sum(x => x.Amount)} damage to {damageResult.Key.Name} (original damage: {originalDamage})");
+                }
+                else
+                {
+                    actionResult.ActionMessages.Add($"{actionResult.Source.Name} dealt {damageResult.Value.Sum(x => x.Amount)} damage to {damageResult.Key.Name}");
+                }
             }
             foreach (var modifiers in actionResult.AttributesModified)
             {

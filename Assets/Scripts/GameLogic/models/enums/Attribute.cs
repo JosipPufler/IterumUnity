@@ -2,6 +2,7 @@ namespace Iterum.models.enums
 {
     public enum Attribute
     {
+        // Base stats
         Strength,
         Agility,
         Endurance,
@@ -10,9 +11,11 @@ namespace Iterum.models.enums
         Intelligence,
         Charisma,
         
+        // Speed
         WalkingSpeed,
         FlySpeed,
         ClimbSpeed,
+        SwimmingSpeed,
         Reach,
 
         // Strength
@@ -50,7 +53,7 @@ namespace Iterum.models.enums
         Performance,
         Barter,
         
-
+        // Combat attributes
         MaxHp,
         MaxAp,
         MaxSanity,
@@ -59,6 +62,7 @@ namespace Iterum.models.enums
         EvasionRating,
         Initiative,
 
+        // Attack and damage
         MeleeWeaponAttackModifier,
         MeleeWeaponDamageModifier,
         RangedWeaponAttackModifier,

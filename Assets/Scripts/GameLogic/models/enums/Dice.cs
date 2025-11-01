@@ -8,6 +8,7 @@ namespace Iterum.models.enums
         d8 = 8,
         d10 = 10,
         d12 = 12,
+        d16 = 16,
         d20 = 20,
         d100 = 100
     }

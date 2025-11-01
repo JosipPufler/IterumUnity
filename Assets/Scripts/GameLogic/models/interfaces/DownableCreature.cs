@@ -3,6 +3,7 @@ using Iterum.models.enums;
 using Iterum.utils;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Iterum.models.interfaces
 {
@@ -53,6 +54,21 @@ namespace Iterum.models.interfaces
                 }
             }
             return result;
+        }
+
+        public override string GetStatString()
+        {
+            StringBuilder stringBuilder = new();
+            stringBuilder.AppendLine(base.GetStatString());
+            if (DeathSaves.Count > 0)
+            {
+                int successes = DeathSaves.Count(x => x);
+                int fails = DeathSaves.Count - successes;
+                stringBuilder.AppendLine($"Death saves:");
+                stringBuilder.AppendLine($"successes: {successes}/3");
+                stringBuilder.AppendLine($"fails: {fails}/3");
+            }
+            return stringBuilder.ToString();
         }
     }
 }

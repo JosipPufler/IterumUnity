@@ -49,6 +49,10 @@ public class MapMaker : MonoBehaviour
 
     void ReloadMaps(IEnumerable<MapDto> maps)
     {
+        foreach (Transform child in content.transform)
+        {
+            Destroy(child.gameObject);
+        }
         foreach (MapDto map in maps)
         {
             AddEntry(map);

@@ -82,7 +82,7 @@ namespace Assets.Scripts.MainMenu
                 yield return null;
 
             var roomPlayer = NetworkClient.connection.identity.GetComponent<CustomRoomPlayer>();
-            roomPlayer.CmdSetName(PlayerPrefs.GetString("username"));
+            roomPlayer.CmdSetName(SessionData.Username);
             roomPlayer.CmdSetImagePath("Textures/mmmChip");
             roomPlayer.CmdSetCharacterName("steve");
         }

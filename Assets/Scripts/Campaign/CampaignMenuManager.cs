@@ -1,3 +1,4 @@
+using Assets.Scripts;
 using Assets.Scripts.Campaign;
 using Assets.Scripts.GameLogic.models.interfaces;
 using Iterum.models.enums;
@@ -27,6 +28,20 @@ public class CampaignMenuManager : MonoBehaviour
 
     public static CharacterToken currentCreature;
 
+    public static CampaignMenuManager Instance;
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
     private void Update()
     {
         if (currentCreature != null)
@@ -41,6 +56,10 @@ public class CampaignMenuManager : MonoBehaviour
 
         InitSkills(creature);
 
+        UpdateItemsAndActions(creature);
+    }
+
+    public void UpdateItemsAndActions(BaseCreature creature) {
         foreach (Transform child in inventoryContent.transform)
         {
             Destroy(child.gameObject);
@@ -57,9 +76,24 @@ public class CampaignMenuManager : MonoBehaviour
 
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = action.Name;
             entry.transform.Find("Cost").GetComponent<TMP_Text>().text = action.GetCostString();
-            entry.GetComponent<ActionEntryData>().SetAction(action);
+            entry.AddComponent<ToolTipTriggerUI>().tooltipText = action.GetTooltipText();
+            entry.GetComponent<Button>().onClick.AddListener(() => CampaignActionManager.Instance.CmdSetAction(action.ID));
 
             entry.SetActive(true);
+        }
+
+        foreach (var weapon in creature.WeaponSet.Weapons)
+        {
+            var entry = Instantiate(inventoryPrefab, inventoryContent.transform);
+            entry.transform.Find("Name").GetComponent<TMP_Text>().text = weapon.Name;
+
+            Button btnUse = entry.transform.Find("btnUse").GetComponent<Button>();
+            TMP_Text buttonText = btnUse.GetComponentInChildren<TMP_Text>();
+            buttonText.text = "Unequip";
+            btnUse.onClick.AddListener(() => {
+                creature.WeaponSet.UnequipWeapon(creature.Inventory, weapon);
+            });
+            entry.AddComponent<ToolTipTriggerUI>().tooltipText = weapon.GetTooltipText();
         }
 
         var groupedItems = creature.Inventory
@@ -70,8 +104,8 @@ public class CampaignMenuManager : MonoBehaviour
         {
             var firstItem = group.First();
             int count = group.Count();
-
             var entry = Instantiate(inventoryPrefab, inventoryContent.transform);
+            entry.AddComponent<ToolTipTriggerUI>().tooltipText = firstItem.GetTooltipText();
 
             string displayName = firstItem.Stackable && count > 1
                 ? $"{firstItem.Name} x{count}"
@@ -80,12 +114,21 @@ public class CampaignMenuManager : MonoBehaviour
             entry.transform.Find("Name").GetComponent<TMP_Text>().text = displayName;
 
             Button btnUse = entry.transform.Find("btnUse").GetComponent<Button>();
+            TMP_Text buttonText = btnUse.GetComponentInChildren<TMP_Text>();
 
             if (firstItem is BaseConsumable consumable)
             {
                 btnUse.onClick.AddListener(() =>
                 {
                     CampaignActionManager.Instance.CmdSetAction(consumable.ConsumeAction.ID);
+                });
+            }
+            else if (firstItem is BaseEquipment equipment)
+            {
+                buttonText.text = "Equip";
+                btnUse.onClick.AddListener(() =>
+                {
+                    CampaignActionManager.Instance.CmdEquipItem(equipment.ID);
                 });
             }
             else

@@ -5,8 +5,10 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using Iterum.utils;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Attribute = Iterum.models.enums.Attribute;
 
 namespace Iterum.models
 {
@@ -20,94 +22,90 @@ namespace Iterum.models
             {
                 bool result = armorSlots.TryGetValue(key, out int number);
                 if (result && number >= 0)
-                    armors.Add(key, new BaseArmor[number]);
+                    armors.Add(key, new List<BaseArmor>());
             });
         }
 
         public ArmorSet(){}
 
-        [JsonConverter(typeof(DictionaryKeyArmorSlotConverter))]
-        private readonly IDictionary<ArmorSlot, BaseArmor[]> armors = new Dictionary<ArmorSlot, BaseArmor[]>();
+        public Dictionary<ArmorSlot, List<BaseArmor>> armors = new();
+
         [JsonIgnore]
-        private BaseCreature creature;
+        public BaseCreature creature;
 
-        public void SetCreature(BaseCreature creature) {
-            this.creature = creature;
-            armors.Clear();
-
-            foreach (var kvp in creature.GetArmorSlots())
+        public void CreateArmorSet<T>(Dictionary<ArmorSlot, int> slots)
+            where T : ArmorGroup
+        {   
+            foreach (var kvp in slots)
             {
-                if (kvp.Value >= 0)
+                ArmorSlot slot = kvp.Key;
+                int numberOfPieces = kvp.Value;
+
+                for (int i = 0; i < numberOfPieces; i++)
                 {
-                    armors[kvp.Key] = new BaseArmor[kvp.Value];
+                    T armor = (T)Activator.CreateInstance(typeof(T), slot);
+                    AddArmor(armor);
                 }
             }
         }
 
         public void RecalculateArmorSlots()
         {
-            IDictionary<ArmorSlot, int> armorSlots = creature.GetArmorSlots();
-            armorSlots.Keys.ToList().ForEach(key =>
+            foreach (var kvp in creature.GetArmorSlots())
             {
-                bool result = armorSlots.TryGetValue(key, out int number);
-                if (result && number >= 0) 
+                int slotCount = kvp.Value;
+                if (slotCount < 0)
+                    continue;
+
+                var oldArmor = armors.TryGetValue(kvp.Key, out var existing)
+                    ? existing.Where(a => a != null).ToList()
+                    : new List<BaseArmor>();
+
+                armors[kvp.Key] = new List<BaseArmor>(new BaseArmor[slotCount]);
+
+                for (int i = 0; i < oldArmor.Count; i++)
                 {
-                    armors[key] = new BaseArmor[number];
-                    if (armors.TryGetValue(key, out BaseArmor[] oldArmor))
+                    if (i < slotCount)
                     {
-                        oldArmor = oldArmor.Where(x => x != null).ToArray();
-                        int length = 0;
-                        foreach (BaseArmor armor in oldArmor)
-                        {
-                            if (armors[key].Length >= length + 1)
-                            {
-                                creature.Inventory.Add(armor);
-                            }
-                            else
-                            {
-                                armors[key][length] = armor;
-                            }
-                        }
+                        armors[kvp.Key][i] = oldArmor[i];
+                    }
+                    else
+                    {
+                        creature.Inventory.Add(oldArmor[i]);
                     }
                 }
-            });
+            }
         }
 
-        public IDictionary<ArmorSlot, BaseArmor[]> GetArmorSet() {
+        public IDictionary<ArmorSlot, List<BaseArmor>> GetArmorSet() {
             return armors;
         }
 
-        public List<BaseArmor> GetArmor() {
-            List<BaseArmor> listOfArmor = new();
-            armors.Keys.ToList().ForEach(key =>
-            {
-                if (armors.TryGetValue(key, out BaseArmor[] listOfArmorInSlot) && listOfArmorInSlot.Length > 0)
-                {
-                    listOfArmor.AddRange(listOfArmorInSlot.Where(x => x != null).ToList());
-                }
-            });
-            return listOfArmor;
+        public List<BaseArmor> GetArmor()
+        {
+            return armors
+                .SelectMany(kvp => kvp.Value)
+                .Where(a => a != null)
+                .ToList();
         }
 
-        public bool DonArmor(BaseCreature creature, BaseArmor armor, IList<IItem> source) {
-            if (!source.Contains(armor))
-            {
-                return false;
+        public bool DonArmor(BaseArmor armor, List<BaseItem> source) {
+            if (source.Contains(armor) && AddArmor(armor)) { 
+                source.Remove(armor);
+                return true;
             }
-            if (armor.CanEquip(creature) && armors.ContainsKey(armor.ArmorSlot))
+            return false;
+        }
+
+        public bool AddArmor(BaseArmor armor)
+        {
+            if (!armor.CanEquip(creature) || !armors.TryGetValue(armor.ArmorSlot, out var armorList))
+                return false;
+            Dictionary<ArmorSlot, int> dictionary = creature.GetArmorSlots();
+            if (dictionary.TryGetValue(armor.ArmorSlot, out int maxSlots) && (armorList.Count + 1) <= maxSlots)
             {
-                if (armors.TryGetValue(armor.ArmorSlot, out BaseArmor[] armorList))
-                {
-                    for (int i = 0; i < armorList.Length; i++)
-                    {
-                        if (armorList[i] == null)
-                        {
-                            armorList[i] = armor;
-                            source.Remove(armor);
-                            return true;
-                        }
-                    }
-                }
+                armorList.Add(armor);
+                return true;
             }
             return false;
         }
@@ -115,36 +113,28 @@ namespace Iterum.models
 
         public bool DoffArmor(List<BaseItem> targetInventory, BaseArmor armor)
         {
-            if (armors.ContainsKey(armor.ArmorSlot))
+            if (!armor.CanEquip(creature) || !armors.TryGetValue(armor.ArmorSlot, out var armorList))
+                return false;
+            if (armorList.Contains(armor))
             {
-                bool result = armors.TryGetValue(armor.ArmorSlot, out BaseArmor[] armorList);
-                if (result)
-                {
-                    for (int i = 0; i < armorList.Length; i++)
-                    {
-                        if (armorList[i] == armor)
-                        {
-                            armorList[i] = null;
-                            targetInventory.Add(armor);
-                            return true;
-                        }
-                    }
-                }
+                armorList.Remove(armor);
+                targetInventory.Add(armor);
+                return true;
             }
             return false;
         }
 
         public IDictionary<DamageType, double> GetArmorSetResistances() {
-            return DamageUtils.CalculateEfectiveDamage(GetArmor());
+            return DamageUtils.CalculateEfectiveDamageResistances(GetArmor());
         }
 
         public int GetEvasionRatingModifier() {
             return GetArmor().Sum(x => x.EvasionRatingModifier);
         }
 
-        public IList<IAction> GetActions()
+        public IList<interfaces.IAction> GetActions()
         {
-            List<IAction> actions = new();
+            List<interfaces.IAction> actions = new();
             foreach (BaseArmor armor in GetArmor())
             {
                 actions.AddRange(armor.Actions);

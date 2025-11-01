@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using Assets.Scripts.Utils;
 using Iterum.DTOs;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -77,9 +78,10 @@ namespace Iterum.Scripts.Utils
             if (request.result == UnityWebRequest.Result.Success)
             {
                 LoginResponse response = JsonConvert.DeserializeObject<LoginResponse>(request.downloadHandler.text);
-                PlayerPrefs.SetString("token", "Bearer " + response.JwtToken);
+
+                SessionData.Token = "Bearer " + response.JwtToken; 
                 
-                PlayerPrefs.SetString("username", response.Username);
+                SessionData.Username = response.Username;
                 onSuccess?.Invoke(response);
             }
             else

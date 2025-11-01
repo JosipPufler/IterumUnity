@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.Utils;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
@@ -13,33 +12,38 @@ namespace Assets.Scripts.GameLogic.models.races
         public virtual string Name { get; set; }
         public virtual string Description { get; set; }
 
-        public virtual Dictionary<WeaponSlot, int> WeaponSlots { get; } = new Dictionary<WeaponSlot, int>();
+        [JsonProperty]
+        public virtual Dictionary<WeaponSlot, int> WeaponSlots { get; protected set; } = new Dictionary<WeaponSlot, int>() { { WeaponSlot.Hand, 2 } };
 
-        public virtual Dictionary<Attribute, int> RacialAttributes { get; } = new Dictionary<Attribute, int>();
+        [JsonProperty]
+        public virtual Dictionary<Attribute, int> RacialAttributes { get; protected set; } = new Dictionary<Attribute, int>();
 
-        public virtual Dictionary<Attribute, double> RacialAttributeMultipliers { get; } = new Dictionary<Attribute, double>();
+        [JsonProperty]
+        public virtual Dictionary<Attribute, double> RacialAttributeMultipliers { get; protected set; } = new Dictionary<Attribute, double>();
 
-        public virtual Dictionary<DamageType, double> Resistances { get; } = new Dictionary<DamageType, double>();
+        [JsonProperty]
+        public virtual Dictionary<DamageType, double> Resistances { get; protected set; } = new Dictionary<DamageType, double>();
 
-        public virtual Dictionary<DamageCategory, double> CategoryResistances { get; } = new Dictionary<DamageCategory, double>();
+        [JsonProperty]
+        public virtual Dictionary<DamageCategory, double> CategoryResistances { get; protected set; } = new Dictionary<DamageCategory, double>();
 
+        [JsonProperty]
         [JsonConverter(typeof(DictionaryKeyArmorSlotConverterInt))]
-        public virtual Dictionary<ArmorSlot, int> ArmorSlots
-        {
-            get
-            {
-                return new Dictionary<ArmorSlot, int>() {
-                    { ArmorSlot.Head, 1 },
-                    { ArmorSlot.Torso, 1 },
-                    { ArmorSlot.Hand, 1 },
-                    { ArmorSlot.Legs, 1 },
-                    { ArmorSlot.Ring, 10 },
-                    { ArmorSlot.Necklace, 1 },
-                    { ArmorSlot.Boots, 1 },
-                };
-            }
-        }
+        public virtual Dictionary<ArmorSlot, int> ArmorSlots { get; protected set; } = new Dictionary<ArmorSlot, int>() {
+                                                                                            { ArmorSlot.Head, 1 },
+                                                                                            { ArmorSlot.Torso, 1 },
+                                                                                            { ArmorSlot.Hand, 2 },
+                                                                                            { ArmorSlot.Legs, 1 },
+                                                                                            { ArmorSlot.Ring, 10 },
+                                                                                            { ArmorSlot.Necklace, 1 },
+                                                                                            { ArmorSlot.Boots, 1 },
+                                                                                        };
+        [JsonProperty]
+        public virtual int SkillPointPicks { get; protected set; }
+        [JsonProperty]
+        public virtual HashSet<Skill> RacialSkills { get; protected set; } = new HashSet<Skill>();
 
+        public virtual int BaseEvasionRating { get; set; } = 10;
         public virtual IList<IAction> GetActions()
         {
             return new List<IAction>();
@@ -47,7 +51,7 @@ namespace Assets.Scripts.GameLogic.models.races
 
         public virtual IDictionary<DamageType, double> GetEffectiveDamageResistances()
         {
-            return DamageUtils.CalculateEfectiveDamage(new IResistable[] { this });
+            return DamageUtils.CalculateEfectiveDamageResistances(new IResistable[] { this });
         }
 
         public virtual IDictionary<DamageCategory, double> GetEffectiveDamageCategoryResistances()

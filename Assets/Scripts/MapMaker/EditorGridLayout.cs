@@ -13,8 +13,9 @@ using Vector3 = UnityEngine.Vector3;
 public class EditorGridLayout : HexGridLayout
 {
     public Material holderMaterial;
+    public MainMenuNotifPanel notifPanel;
 
-    private List<GameObject> hexHolders = new();
+    private readonly List<GameObject> hexHolders = new();
 
     void OnEnable()
     {
@@ -58,7 +59,7 @@ public class EditorGridLayout : HexGridLayout
             GameManager.Instance.SelectedMap.MaxY = gridSize.y;
             GameManager.Instance.SelectedMap.IsFlatTopped = isFlatTopped;
             GameManager.Instance.SelectedMap.Hexes = hexes;
-            MapManager.Instance.UpdateMap(GameManager.Instance.SelectedMap, null, OnError);
+            MapManager.Instance.UpdateMap(GameManager.Instance.SelectedMap, () => notifPanel.SetInfoMessage($"{GameManager.Instance.SelectedMap.Name} was successfully saved"), e => notifPanel.SetErrorMessage(e));
         }
 
         // Place on top

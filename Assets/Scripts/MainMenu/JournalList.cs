@@ -1,9 +1,8 @@
-﻿using Iterum.DTOs;
+﻿using Assets.Scripts.Utils;
+using Iterum.DTOs;
 using Iterum.Scripts.Utils;
 using System.Collections.Generic;
-using System.ComponentModel;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,7 +32,6 @@ namespace Assets.Scripts.MainMenu
         [Header("Edit fields")]
         public TMP_InputField journalEditArea;
         public TMP_Text journalTitle;
-        public TMP_Text lastModified;
         public TMP_Text rendered;
 
         void Start()
@@ -41,7 +39,8 @@ namespace Assets.Scripts.MainMenu
             btnCreate.onClick.AddListener(() => {
                 if (!string.IsNullOrEmpty(entryName.text))
                 {
-                    JournalManager.Instance.SaveJournal(new JournalDto(entryName.text, ""), () => AddEntry(entryName.text), OnError);
+                    var text = entryName.text;
+                    JournalManager.Instance.SaveJournal(new JournalDto(entryName.text, ""), () => AddEntry(text), OnError);
                     entryName.text = "";
                 }
             });
@@ -49,7 +48,7 @@ namespace Assets.Scripts.MainMenu
                 if (!string.IsNullOrEmpty(previewPath.text))
                 {
                     JournalManager.Instance.PreviewJournal(previewPath.text, (JournalDto) => { 
-                        previewText.text = JournalDto.Content;
+                        previewText.text = MarkdownService.Convert(JournalDto.Content);
                         previewPanel.SetActive(true);
                         listPanel.SetActive(false);
                     }, OnError);
@@ -62,15 +61,28 @@ namespace Assets.Scripts.MainMenu
 
         void Update()
         {
-            if (Input.GetKey(KeyCode.Escape))
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
-                mainMeuePanel.SetActive(true);
-                listPanel.SetActive(false);
+                if (previewPanel.activeSelf)
+                {
+                    previewPanel.SetActive(false);
+                    listPanel.SetActive(true);
+                }
+                else
+                {
+                    mainMeuePanel.SetActive(true);
+                    listPanel.SetActive(false);
+                }
             }
         }
 
         void ReloadJournals(IEnumerable<string> journals)
         {
+            foreach (Transform child in content.transform)
+            {
+                Destroy(child.gameObject);
+            }
+
             foreach (string journalName in journals)
             {
                 AddEntry(journalName);
@@ -90,7 +102,7 @@ namespace Assets.Scripts.MainMenu
             buttonHolder.Find("btnDelete").GetComponent<Button>()
                 .onClick.AddListener(() => DeleteJournal(name, entry.transform));
             buttonHolder.Find("btnShare").GetComponent<Button>()
-                .onClick.AddListener(() => GUIUtility.systemCopyBuffer = $"{PlayerPrefs.GetString("username")}/journal/{name}.txt");
+                .onClick.AddListener(() => GUIUtility.systemCopyBuffer = $"{SessionData.Username}/journal/{name}.txt");
 
             entry.SetActive(true);
         }
@@ -99,9 +111,8 @@ namespace Assets.Scripts.MainMenu
         {
             JournalManager.Instance.GetJournal(name, journalDto => { 
                 journalEditArea.text = journalDto.Content;
-                lastModified.text = journalDto.LastModified.ToSafeString();
                 journalTitle.text = journalDto.Name;
-                rendered.text = MarkDownService.Convert(journalDto.Content);
+                rendered.text = MarkdownService.Convert(journalDto.Content);
 
                 gameObject.SetActive(false);
                 editPanel.SetActive(true);

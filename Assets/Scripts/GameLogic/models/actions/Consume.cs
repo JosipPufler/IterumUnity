@@ -19,6 +19,10 @@ namespace Iterum.models.actions
             Action = func;
         }
 
+        public Consume(BaseConsumable consumable, BaseAction baseAction) : this(consumable, baseAction.Description, baseAction.ApCost, baseAction.MpCost, baseAction.TargetTypes, baseAction.Action) { 
+            
+        }
+
         [JsonIgnore]
         public BaseConsumable consumable;
     }

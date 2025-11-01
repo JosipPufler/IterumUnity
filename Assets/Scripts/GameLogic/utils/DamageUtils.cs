@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.interfaces;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
 using System.Collections.Generic;
@@ -26,23 +27,23 @@ namespace Iterum.utils
             return resistances;
         }*/
 
-        public static IDictionary<DamageType, double> CalculateEfectiveDamage(
-    IEnumerable<IResistable> resistables,
-    IDictionary<DamageType, double> additionalModifiers)
+        public static Dictionary<DamageType, double> CalculateEfectiveDamage(
+            IEnumerable<IResistable> resistables,
+            IDictionary<DamageType, double> additionalModifiers)
         {
             // 1) Compute category resistances
             IDictionary<DamageCategory, double> categoryResistances = CalculateEfectiveCategoryDamage(resistables);
 
             // 2) Gather all raw resistances (from each IResistable and any extra modifiers)
-            var rawEntries = resistables
-                .SelectMany(r => r.Resistances)
+            IEnumerable<KeyValuePair<DamageType, double>> rawEntries = resistables
+                .SelectMany(r => {
+                    if (r is BaseArmor armor)
+                    {
+                        return r.Resistances.ToDictionary(x => x.Key, x => x.Value * armor.ArmorSlot.ArmorMultiplier);
+                    }
+                    return r.Resistances;
+                })
                 .Concat(additionalModifiers);
-
-            // Log each raw entry
-            foreach (var entry in rawEntries)
-            {
-                Debug.Log($"Raw resistance: Type={entry.Key}, Value={entry.Value}");
-            }
 
             // 3) Aggregate into a per-DamageType multiplier
             var resistances = rawEntries
@@ -55,15 +56,15 @@ namespace Iterum.utils
                         double prod = 1.0;
                         foreach (var e in g)
                         {
-                            prod *= (1 - e.Value);
+                            prod -= e.Value;
                         }
                         return prod;
                     });
 
-            // Log after aggregation, before category adjustment
-            foreach (var kv in resistances)
+            foreach (var damageType in DamageType.GetDamageTypes())
             {
-                Debug.Log($"After aggregation: Type={kv.Key}, Multiplier={kv.Value}");
+                if (!resistances.ContainsKey(damageType))
+                    resistances[damageType] = 1.0;
             }
 
             // 4) Apply category multipliers
@@ -73,16 +74,13 @@ namespace Iterum.utils
                 {
                     double before = resistances[damageType];
                     resistances[damageType] *= categoryMul;
-                    Debug.Log(
-                        $"Applying category {damageType.DamageCategory}: " +
-                        $"before={before}, categoryMul={categoryMul}, after={resistances[damageType]}");
                 }
             }
 
             return resistances;
         }
 
-        public static IDictionary<DamageType, double> CalculateEfectiveDamage(IEnumerable<IResistable> resistables)
+        public static Dictionary<DamageType, double> CalculateEfectiveDamageResistances(IEnumerable<IResistable> resistables)
         {
             return CalculateEfectiveDamage(resistables, new Dictionary<DamageType, double>());
         }
@@ -90,10 +88,16 @@ namespace Iterum.utils
         public static IDictionary<DamageCategory, double> CalculateEfectiveCategoryDamage(IEnumerable<IResistable> resistables, IDictionary<DamageCategory, double> additionalModifiers)
         {
             return resistables
-                .SelectMany(resistable => resistable.CategoryResistances)
+                .SelectMany(resistable => {
+                    if (resistable is BaseArmor armor)
+                    {
+                        return resistable.CategoryResistances.ToDictionary(x => x.Key, x => x.Value*armor.ArmorSlot.ArmorMultiplier);
+                    }
+                    return resistable.CategoryResistances;
+                    })
                 .Concat(additionalModifiers)
                 .GroupBy(entity => entity.Key)
-                .ToDictionary(group => group.Key, group => group.Aggregate(1.0, (product, entity) => product * (1 - entity.Value)));
+                .ToDictionary(group => group.Key, group => group.Aggregate(1.0, (product, entity) => product -= entity.Value));
         }
 
         public static IDictionary<DamageCategory, double> CalculateEfectiveCategoryDamage(IEnumerable<IResistable> resistables)

@@ -4,7 +4,6 @@ using Iterum.models.interfaces;
 using Mirror;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -39,52 +38,6 @@ public class GeneralManager : MonoBehaviour
         initiativeBarContent = initiativeBar.content.gameObject;
     }
 
-    /*private void Update()
-    {
-        for (int i = initiativeOrder.Count-1; i >= 0; i--)
-        {
-            if (initiativeOrder.ElementAt(i).token.creature.IsDead)
-            {
-                initiativeOrder.RemoveAt(i);
-                Destroy(portraitOrder.ElementAt(i).portrait);
-                portraitOrder.RemoveAt(i);
-                if (i == 0)
-                {
-                    HighlightFirst();
-                }
-            }
-        }
-    }*/
-
-    /*public void StartCombatTurn(bool first)
-    {
-        InCombat = true;
-        foreach (Transform child in initiativeBarContent.transform)
-        {
-            Destroy(child.gameObject);
-        }
-
-        foreach (CharacterToken token in layoutManager.GetCombatants())
-        {
-            initiativeOrder.Add((token.creature.RollInitiative(), token));
-            if (first)
-                token.creature.CurrentAp = token.creature.MaxAp;
-        }
-
-        initiativeOrder = initiativeOrder
-            .GroupBy(x => x.priority)
-            .OrderByDescending(g => g.Key)
-            .SelectMany(g => g.OrderBy(_ => rng.Next()))
-            .ToList();
-
-        foreach (var (priority, token) in initiativeOrder)
-        {
-            portraitOrder.Add((CreatePortrait(token), token));
-        }
-
-        HighlightFirst();
-    }*/
-
     private void HighlightFirst()
     {
         if (portraitOrder.Count == 0)
@@ -117,7 +70,7 @@ public class GeneralManager : MonoBehaviour
 
         Outline outline = entry.GetComponent<Outline>();
 
-        switch (layoutManager.GetCreatureTeam(creature.ID))
+        switch (token.team)
         {
             case Assets.Scripts.GameLogic.models.enums.Team.PLAYER:
                 outline.effectColor = Color.green;
@@ -177,27 +130,6 @@ public class GeneralManager : MonoBehaviour
 
         initiativeOrder.Insert(insertIndex, entry);
         portraitOrder.Insert(insertIndex, (CreatePortrait(token), token));
-    }*/
-
-    /*public void EndTurn() {
-        if (initiativeOrder.Count == 0)
-        {
-            return;
-        }
-        initiativeOrder.ElementAt(0).token.creature.EndTurn();
-        initiativeOrder.RemoveAt(0);
-        Destroy(portraitOrder.ElementAt(0).portrait);
-        portraitOrder.RemoveAt(0);
-        initiativeBar.UpdateScroll();
-
-        if (initiativeOrder.Count == 0)
-        {
-            StartCombatTurn(false);
-        }
-        else
-        {
-            HighlightFirst();
-        }
     }*/
 
     public void SyncPortraitsWithOrder(IList<CharacterToken> tokens)

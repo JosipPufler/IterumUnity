@@ -52,7 +52,7 @@ namespace Assets.Scripts.Utils.Managers
             form.AddBinaryData("image", imageBytes, fileName, "image/png");
 
             UnityWebRequest request = UnityWebRequest.Post(EndpointUtils.UploadImage, form);
-            request.SetRequestHeader("Authorization", PlayerPrefs.GetString("token"));
+            request.SetRequestHeader("Authorization", SessionData.Token);
 
             yield return request.SendWebRequest();
 

@@ -19,13 +19,11 @@ namespace Iterum.models
         [JsonIgnore]
         public BaseCreature creature;
 
-        [JsonProperty]
         [JsonConverter(typeof(DictionaryKeySkillConverter))]
+        [JsonProperty]
         public Dictionary<Skill, int> SkillProficiencies { get; private set; } = new();
-
         [JsonProperty]
         public HashSet<Stat> SavingThrowProficiencies { get; private set; } = new HashSet<Stat>();
-
         [JsonProperty]
         public HashSet<WeaponType> WeaponProficiencies { get; private set; } = new() {WeaponType.Natural};
 

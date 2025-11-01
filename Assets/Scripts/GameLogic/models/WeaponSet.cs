@@ -36,18 +36,14 @@ namespace Iterum.models
 
         public WeaponSet(){}
 
-        public IDictionary<WeaponSlot, int> CalculateFreeWeaponSlots()
+        public Dictionary<WeaponSlot, int> CalculateFreeWeaponSlots()
         {
-            IDictionary<WeaponSlot, int> freeWeaponSlots = new Dictionary<WeaponSlot, int>(creature.GetWeaponSlots());
+            Dictionary<WeaponSlot, int> freeWeaponSlots = new(creature.GetWeaponSlots());
             foreach (IWeapon weapon in Weapons)
             {
                 if (freeWeaponSlots.TryGetValue(weapon.WeaponSlotDetails.Slot, out int numberOfSlots))
                 {
                     freeWeaponSlots[weapon.WeaponSlotDetails.Slot] = (numberOfSlots - weapon.WeaponSlotDetails.SlotsNeeded) < 0 ? throw new Exception("mismatch of weapon slots") : numberOfSlots - weapon.WeaponSlotDetails.SlotsNeeded;
-                }
-                else
-                {
-                    freeWeaponSlots[weapon.WeaponSlotDetails.Slot] = 0;
                 }
             }
             return freeWeaponSlots;
@@ -64,18 +60,42 @@ namespace Iterum.models
             return false;
         }
 
-        public bool EquipWeapon(BaseWeapon weapon, IList<IItem> source)
+        public bool EquipWeapon(BaseWeapon weapon, List<BaseItem> source)
         {
-            if (!source.Contains(weapon))
-            {
+            if (weapon == null || creature == null) 
                 return false;
-            }
-            if (weapon.CanEquip(creature) && CalculateFreeWeaponSlots().TryGetValue(weapon.WeaponSlotDetails.Slot, out int numberOfFreeSlots) && numberOfFreeSlots >= weapon.WeaponSlotDetails.SlotsNeeded && source.Remove(weapon))
+            if (!source.Contains(weapon)) 
+                return false;
+            if (!weapon.CanEquip(creature)) 
+                return false;
+
+            var needed = weapon.WeaponSlotDetails.SlotsNeeded;
+            var slot = weapon.WeaponSlotDetails.Slot;
+
+            int free = CalculateFreeWeaponSlots().GetValueOrDefault(slot);
+            if (free < needed)
             {
+                foreach (var w in Weapons.ToList())
+                {
+                    if (w.WeaponSlotDetails.Slot == slot)
+                    {
+                        source.Add(w);
+                        Weapons.Remove(w);
+                        free = CalculateFreeWeaponSlots().GetValueOrDefault(slot);
+                        if (free >= needed)
+                            break;
+                    }
+                }
+            }
+
+            if (free >= needed)
+            {
+                source.Remove(weapon);
                 Weapons.Add(weapon);
                 weapon.Creature = creature;
                 return true;
             }
+
             return false;
         }
 
@@ -95,7 +115,7 @@ namespace Iterum.models
             List<IAction> actions = new();
             foreach (IWeapon weapon in Weapons)
             {
-                actions.AddRange(weapon.WeaponActions);
+                actions.AddRange(weapon.Actions);
             }
             return actions;
         }

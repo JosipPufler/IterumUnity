@@ -1,3 +1,4 @@
+using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.creatures;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
@@ -29,7 +30,8 @@ namespace Iterum.models
     {
         [JsonIgnore]
         public BaseCreature creature;
-        public HashSet<BaseClass> Classes { get; private set; } = new(new ClassComparer());
+        [JsonProperty]
+        public HashSet<BaseClass> Classes { get; private set; } = new();
 
         public ClassManager(BaseCreature creature)
         {
@@ -72,7 +74,10 @@ namespace Iterum.models
             }
 
             BaseClass characterClass = (BaseClass)Activator.CreateInstance(classType);
-            return characterClass.CanJoin(creature) && characterClass.InitCreature(creature) && Classes.Add(characterClass);
+            bool classJoined = characterClass.CanJoin(creature);
+            bool creatureInitialized = characterClass.InitCreature(creature);
+            bool classAdded = Classes.Add(characterClass);
+            return classJoined && creatureInitialized && classAdded;
         }
 
         public IList<BaseClass> GetAllClasses() { 
@@ -88,7 +93,7 @@ namespace Iterum.models
 
         public IList<IAction> GetClassActions()
         {
-            return Classes.SelectMany(x => x.Actions).ToList();
+            return Classes.SelectMany(x => x.GetAvailableActions()).ToList();
         }
 
         public int GetLevel() 
@@ -114,7 +119,7 @@ namespace Iterum.models
 
         public IDictionary<DamageType, double> GetEffectiveDamageResistances() 
         {
-            return DamageUtils.CalculateEfectiveDamage(Classes);
+            return DamageUtils.CalculateEfectiveDamageResistances(Classes);
         }
 
         public IDictionary<DamageCategory, double> GetEffectiveDamageCategoryResistances()

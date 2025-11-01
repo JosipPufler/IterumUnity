@@ -14,7 +14,7 @@ namespace Assets.Scripts.GameLogic.models.enums
         public Attribute AttackTypeAttribute { get; set; }
         public Attribute AttackTypeDamageAttribute { get; set; }
 
-        public AttackType(string name, Stat baseAttribute, bool proficient, AttackTypeEnum attackTypeEnum, Attribute attackTypeAttribute, Attribute attackTypeDamageAttribute)
+        private AttackType(string name, Stat baseAttribute, bool proficient, AttackTypeEnum attackTypeEnum, Attribute attackTypeAttribute, Attribute attackTypeDamageAttribute)
         {
             Name = name;
             Proficient = proficient;

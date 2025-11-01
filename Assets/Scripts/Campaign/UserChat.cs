@@ -1,4 +1,5 @@
 using Assets.Scripts.Campaign;
+using Assets.Scripts.Utils;
 using Mirror;
 using System;
 using TMPro;
@@ -19,7 +20,7 @@ public class UserChat : MonoBehaviour
             !string.IsNullOrEmpty(chatInput.text))
         {
             var player = NetworkClient.connection.identity.GetComponent<CampaignPlayer>();
-            string username = PlayerPrefs.GetString("username");
+            string username = SessionData.Username;
             player.CmdSendChatMessage(username, chatInput.text);
             chatInput.text = "";
         }

@@ -23,8 +23,6 @@ namespace Assets.Scripts.Utils.converters
 
             BaseConsumable consumable = (BaseConsumable)jObject.ToObject(objectType, noLoopSerializer);
 
-            consumable.ConsumeAction.consumable = consumable;
-
             consumable?.Initialize();
 
             return consumable;

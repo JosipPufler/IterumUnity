@@ -11,6 +11,6 @@ namespace Iterum.models.interfaces
         Dictionary<Attribute, int> AttributeModifiers {  get; }
         Dictionary<Attribute, double> AttributeMultipliers { get; }
 
-        IList<BaseAction> Actions { get; }
+        List<BaseAction> Actions { get; }
     }
 }

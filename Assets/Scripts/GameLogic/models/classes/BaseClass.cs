@@ -1,8 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Assets.Scripts.GameLogic.models.actions;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Unity.VisualScripting;
 using Attribute = Iterum.models.enums.Attribute;
 
 namespace Assets.Scripts.GameLogic.models.creatures
@@ -11,59 +14,47 @@ namespace Assets.Scripts.GameLogic.models.creatures
     {
         public BaseClass(){}
 
-        public BaseClass(BaseCreature creature)
-        {
-            Creature = creature;
-            if (ClassActions.TryGetValue(1, out List<IAction> actions))
-            {
-                Actions = actions;
-            }
-            AttributesModifiers[Attribute.MaxHp] = (int)HealthDie + Creature.ModifierManager.GetAttribute(Attribute.Endurance, false);
-        }
-
+        [JsonIgnore]
         public BaseCreature Creature { get; set; }
 
-        public bool InitCreature(BaseCreature creature) {
-            Creature = creature;
-            if (ClassActions.TryGetValue(1, out List<IAction> actions))
+        public virtual bool InitCreature(BaseCreature creature) {
+            if (creature == null)
             {
-                Actions.Concat(actions);
+                return false;
             }
+            Creature = creature;
             AttributesModifiers[Attribute.MaxHp] = (int)HealthDie + Creature.ModifierManager.GetAttribute(Attribute.Endurance, false);
             return true;
         }
 
-        public virtual string ClassName { get; }
+        public abstract string ClassName { get; }
+        public abstract string Description { get; set; }
+        public abstract Dice HealthDie { get; set; }
 
-        public virtual Dictionary<int, List<IAction>> ClassActions { get; } = new();
+        [JsonProperty]
+        public virtual Dictionary<int, List<IAction>> ClassActions { get; protected set; } = new();
 
         public int Level { get; set; } = 1;
 
-        public virtual Dice HealthDie { get; set; }
+        [JsonProperty]
+        public virtual Dictionary<Attribute, int> AttributesModifiers { get; protected set; } = new Dictionary<Attribute, int>();
+        [JsonProperty]
+        public virtual Dictionary<Attribute, double> AttributesMultipiers { get; protected set; } = new Dictionary<Attribute, double>();
+        [JsonProperty]
+        public virtual Dictionary<DamageCategory, double> DamageCategoryResistances { get; protected set; } = new Dictionary<DamageCategory, double>();
+        [JsonProperty]
+        public virtual Dictionary<DamageType, double> Resistances { get; protected set; } = new Dictionary<DamageType, double>();
+        [JsonProperty]
+        public virtual Dictionary<DamageCategory, double> CategoryResistances { get; protected set; } = new Dictionary<DamageCategory, double>();
 
-        public IList<IAction> Actions { get; } = new List<IAction>();
 
-        public Dictionary<Attribute, int> AttributesModifiers {  get; } = new Dictionary<Attribute, int>();
+        public virtual bool CanJoin(BaseCreature creature) {
+            return true;
+        }
 
-        public Dictionary<Attribute, double> AttributesMultipiers { get; } = new Dictionary<Attribute, double>();
-
-        public Dictionary<DamageCategory, double> DamageCategoryResistances { get; } = new Dictionary<DamageCategory, double>();
-
-        public Dictionary<DamageType, double> Resistances { get; } = new Dictionary<DamageType, double>();
-
-        public Dictionary<DamageCategory, double> CategoryResistances { get; } = new Dictionary<DamageCategory, double>();
-
-        public string Description { get; set; }
-
-        public abstract bool CanJoin(BaseCreature creature);
-
-        public bool LevelUp()
+        public virtual bool LevelUp()
         {
             Level += 1;
-            if (ClassActions.ContainsKey(Level))
-            {
-                Actions.Concat(ClassActions[Level]);
-            }
 
             if (AttributesModifiers.ContainsKey(Attribute.MaxHp))
             {
@@ -74,6 +65,10 @@ namespace Assets.Scripts.GameLogic.models.creatures
                 AttributesModifiers[Attribute.MaxHp] = (int)Math.Ceiling((int)HealthDie / 2.0) + Creature.ModifierManager.GetAttribute(Attribute.Endurance, false);
             }
             return true;
+        }
+
+        public List<IAction> GetAvailableActions() {
+            return ClassActions.Where(x => x.Key <= Level).SelectMany(x => x.Value).ToList();
         }
     }
 }

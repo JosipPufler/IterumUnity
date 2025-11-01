@@ -1,4 +1,4 @@
-using Assets.DTOs;
+// Assets/Scripts/Utils/BaseCreature.cs
 using Assets.Scripts;
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
@@ -21,8 +21,11 @@ namespace Iterum.models.interfaces
 {
     [Serializable]
     [UnityEngine.Scripting.Preserve]
-    public class BaseCreature : IGameObject, IActionable, ISpellcaster, IDamageable, IContainer, ITargetable
+    public class BaseCreature : IGameObject, IActionable, IDamageable, IContainer
     {
+        public delegate void VoidTriggerActions<T>(T data) where T : IPassiveData;
+        public delegate Dictionary<Attribute, int> AttributeDelegate(GetAttributeData data);
+
         private const int movementPerAp = 2;
 
         public BaseCreature(BaseRace race, string name, string imagePath = "Textures/default", string description = "")
@@ -40,6 +43,7 @@ namespace Iterum.models.interfaces
             WeaponSet = new WeaponSet(this);
             ArmorSet = new ArmorSet(this);
 
+            ModifierManager.AddModifier(Attribute.MaxAp, 6);
             CurrentAp = OriginalMaxAp;
             CurrentSanity = OriginalMaxSanity;
             CurrentHp = OriginalMaxHp;
@@ -65,12 +69,18 @@ namespace Iterum.models.interfaces
         }
 
         [OnDeserialized]
-        public void InitHelpers(StreamingContext context) { 
+        public void InitHelpers(StreamingContext context)
+        {
+            InitHelpers();
+        }
+
+        public void InitHelpers()
+        {
             ModifierManager.creature = this;
-            ClassManager.creature = this;
+            ClassManager.SetCreature(this);
             ProficiencyManager.creature = this;
             WeaponSet.SetCreature(this);
-            ArmorSet.SetCreature(this);
+            ArmorSet.creature = this;
         }
 
         public void Spawn() {
@@ -117,8 +127,7 @@ namespace Iterum.models.interfaces
         public string Description { get; set; }
         public bool IsPlayer { get; set; }
         public string CharacterId { get; set; }
-        [JsonProperty]
-        public BaseRace Race { get; private set; }
+        public BaseRace Race { get; set; }
         [JsonProperty]
         public ClassManager ClassManager { get; private set; }
         [JsonProperty]
@@ -142,6 +151,26 @@ namespace Iterum.models.interfaces
 
         public List<string> CustomActionIds { get; set; } = new();
         public List<CustomBaseAction> CustomActions { get; set; } = new();
+        public event AttributeDelegate getPassiveAttributes;
+        public Dictionary<PassiveTrigger, List<Delegate>> passives = new();
+
+        public void Trigger<T>(T data) where T : IPassiveData
+        {
+            if (passives.TryGetValue(data.Trigger, out var list))
+                foreach (var del in list.Cast<VoidTriggerActions<T>>())
+                    del(data);
+        }
+
+        public void Register<T>(VoidTriggerActions<T> action) where T : IPassiveData
+        {
+            var trigger = default(T)!.Trigger;
+            if (!passives.TryGetValue(trigger, out var list))
+            {
+                list = new List<Delegate>();
+                passives[trigger] = list;
+            }
+            list.Add(action);
+        }
 
         public void SetBaseStats(Dictionary<Stat, int> stats) {
             foreach (var stat in stats)
@@ -155,7 +184,7 @@ namespace Iterum.models.interfaces
             return ModifierManager.WeaponSlots.ToArray().Concat(Race.WeaponSlots).GroupBy(x => x.Key).ToDictionary(x => x.Key, x => x.Sum(x => x.Value));
         }
 
-        public IDictionary<ArmorSlot, int> GetArmorSlots()
+        public Dictionary<ArmorSlot, int> GetArmorSlots()
         {
             var allSlots = ModifierManager.ArmorSlots.Concat(Race.ArmorSlots);
             return allSlots
@@ -163,11 +192,19 @@ namespace Iterum.models.interfaces
                 .ToDictionary(x => x.Key, x => x.Sum(kv => kv.Value));
         }
 
+        public Dictionary<ArmorSlot, int> GetArmorSlotsWithoutAccessories()
+        {
+            Dictionary<ArmorSlot, int> dictionary = GetArmorSlots();
+            dictionary.Remove(ArmorSlot.Ring);
+            dictionary.Remove(ArmorSlot.Necklace);
+            return dictionary;
+        }
+
         public RollType GetTargetRollType() { 
             return RollType.Normal;
         }
 
-        public int GetInitiative() { 
+        public int GetInitiativeModifier() { 
             return ModifierManager.GetAttribute(Attribute.Initiative, false) + ModifierManager.GetAttribute(Attribute.Agility, false);
         }
 
@@ -176,10 +213,17 @@ namespace Iterum.models.interfaces
             return result + GetSkillModifier(skill);
         }
 
+        public int GetAttackModifier(AttackType attackType)
+        {
+            return GetAttributeModifier(attackType.BaseAttribute.Attribute)
+                + GetAttributeModifier(attackType.AttackTypeAttribute)
+                + (attackType.Proficient ? ProficiencyManager.GetProficiencyBonus() : 0);
+        }
+
         public int SavingThrow(Stat stat, RollType rollType)
         {
             int result = DiceUtils.Roll(Dice.d20, rollType);
-            return result + ModifierManager.GetAttribute(stat.Attribute, false) + ProficiencyManager.GetSavingThrowProficiencyBonus(stat);
+            return result + ModifierManager.GetAttribute(stat.Attribute) + ProficiencyManager.GetSavingThrowProficiencyBonus(stat);
         }
 
         public IList<IAction> GetActions()
@@ -195,33 +239,31 @@ namespace Iterum.models.interfaces
             return actions;
         }
 
-        public int TakeDamage(IEnumerable<DamageResult> damage) {
-            Debug.Log(damage.First().Amount);
-            var sources = new List<IResistable>();
-            int damageTaken = 0;
-            sources.AddRange(ArmorSet.GetArmor());
-            sources.AddRange(ClassManager.GetAllClasses());
-            sources.Add(Race);
-
-            IDictionary<DamageType, double> resistances = DamageUtils.CalculateEfectiveDamage(sources);
+        public List<DamageResult> TakeDamage(IEnumerable<DamageResult> damage)
+        {
+            Dictionary<DamageType, (int, int)> damageTaken = new();
+            IDictionary<DamageType, double> resistances = GetEffectiveDamageResistance();
             foreach (DamageResult damageResult in damage)
             {
                 if (resistances.TryGetValue(damageResult.DamageType, out double resistance))
                 {
+                    int damageInstance = (int)Math.Ceiling(damageResult.Amount * resistance);
+                    Debug.Log($"Taking {damageInstance} damage ({damageResult.Amount} with {resistance} resistance)");
                     if (damageResult.DamageType.DamageCategory.DamageClass == DamageClass.Health)
                     {
-                        damageTaken += (int)Math.Ceiling(damageResult.Amount * resistance);
-                        CurrentHp -= (int)Math.Ceiling(damageResult.Amount * resistance);
+                        damageTaken[damageResult.DamageType] = (damageTaken.GetValueOrDefault(damageResult.DamageType).Item1 + damageInstance, damageTaken.GetValueOrDefault(damageResult.DamageType).Item2 + damageResult.Amount);
+                        CurrentHp -= damageInstance;
                     }
                     else
                     {
-                        CurrentSanity -= (int)Math.Ceiling(damageResult.Amount * resistance);
+                        CurrentSanity -= damageInstance;
                     }
                 }
                 else
                 {
+                    Debug.Log($"Taking {damageResult.Amount} damage");
                     CurrentHp -= damageResult.Amount;
-                    damageTaken += damageResult.Amount;
+                    damageTaken[damageResult.DamageType] = (damageTaken.GetValueOrDefault(damageResult.DamageType).Item1 + damageResult.Amount, damageTaken.GetValueOrDefault(damageResult.DamageType).Item2 + damageResult.Amount);
                 }
             }
             if (CurrentSanity <= 0)
@@ -234,7 +276,18 @@ namespace Iterum.models.interfaces
                 CurrentHp = 0;
                 Die();
             }
-            return damageTaken;
+            return damageTaken.Select(x => new DamageResult(x.Value.Item1, x.Key, x.Value.Item2)).ToList();
+        }
+
+        private Dictionary<DamageType, double> GetEffectiveDamageResistance()
+        {
+            var sources = new List<IResistable>();
+            sources.AddRange(ArmorSet.GetArmor());
+            sources.AddRange(ClassManager.GetAllClasses());
+            sources.Add(Race);
+
+            Dictionary<DamageType, double> resistances = DamageUtils.CalculateEfectiveDamageResistances(sources);
+            return resistances;
         }
 
         public void GoInsane()
@@ -247,11 +300,11 @@ namespace Iterum.models.interfaces
         {
             get 
             {
-                return 10 + ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.EvasionRating, false) + ArmorSet.GetEvasionRatingModifier() + WeaponSet.GetEvasionRatingBonus();
+                return Race.BaseEvasionRating + ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.EvasionRating, false) + ArmorSet.GetEvasionRatingModifier() + WeaponSet.GetEvasionRatingBonus();
             } 
             set 
             {
-                ModifierManager.SetModifier(Attribute.EvasionRating, value - (10 + ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.EvasionRating, true)));
+                ModifierManager.AddModifier(Attribute.EvasionRating, value - (10 + ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.EvasionRating, true)));
             }
         }
 
@@ -264,7 +317,7 @@ namespace Iterum.models.interfaces
             }
             set
             {
-                ModifierManager.SetModifier(Attribute.EvasionRating, value - (ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.Initiative, true)));
+                ModifierManager.AddModifier(Attribute.EvasionRating, value - (ModifierManager.GetAttribute(Attribute.Agility, false) + ModifierManager.GetAttribute(Attribute.Initiative, true)));
             }
         }
 
@@ -290,7 +343,7 @@ namespace Iterum.models.interfaces
                 {
                     CurrentHp = value;
                 }
-                ModifierManager.SetModifier(Attribute.MaxHp, value - OriginalMaxHp);
+                ModifierManager.AddModifier(Attribute.MaxHp, value - OriginalMaxHp);
             }
         }
 
@@ -320,7 +373,7 @@ namespace Iterum.models.interfaces
                 {
                     CurrentSanity = value;
                 }
-                ModifierManager.SetModifier(Attribute.MaxSanity, value - OriginalMaxSanity);
+                ModifierManager.AddModifier(Attribute.MaxSanity, value - OriginalMaxSanity);
             }
         }
 
@@ -346,7 +399,7 @@ namespace Iterum.models.interfaces
                 {
                     CurrentMp = value;
                 }
-                ModifierManager.SetModifier(Attribute.MaxMp, value - OriginalMaxMp);
+                ModifierManager.AddModifier(Attribute.MaxMp, value - OriginalMaxMp);
             }
         }
 
@@ -372,7 +425,7 @@ namespace Iterum.models.interfaces
                 {
                     CurrentAp = value;
                 }
-                ModifierManager.SetModifier(Attribute.MaxAp, value - OriginalMaxAp);
+                ModifierManager.AddModifier(Attribute.MaxAp, value - OriginalMaxAp);
             }
         }
 
@@ -394,22 +447,13 @@ namespace Iterum.models.interfaces
             }
             set
             {
-                ModifierManager.SetModifier(Attribute.ApRegen, value - OriginalApRegen);
+                ModifierManager.AddModifier(Attribute.ApRegen, value - OriginalApRegen);
                 ApRegen = value;
             }
         }
 
         public int EffectiveMovementPoints {
             get => MovementPoints + GetMovementPerPoint() * CurrentAp; 
-        }
-
-        [JsonIgnore]
-        public TargetType TargetType
-        {
-            get
-            {
-                return TargetType.Creature;
-            }
         }
 
         public List<BaseItem> Inventory { get; } = new List<BaseItem>();
@@ -432,28 +476,52 @@ namespace Iterum.models.interfaces
             return new Corpse(this);
         }
 
-        public string GetStatString() {
+        public virtual string GetStatString() {
             StringBuilder stringBuilder = new();
             stringBuilder.AppendLine($"HP: {CurrentHp}/{MaxHp}");
             stringBuilder.AppendLine($"Sanity: {CurrentSanity}/{MaxSanity}");
             stringBuilder.AppendLine($"AP: {CurrentAp}/{MaxAp}");
-            stringBuilder.AppendLine($"MP: {CurrentMp}/{MaxMp}");
+            if (OriginalMaxMp > 0)
+            {
+                stringBuilder.AppendLine($"MP: {CurrentMp}/{MaxMp}");
+            }
             if (MovementPoints > 0)
             {
                 stringBuilder.AppendLine($"Movement: {MovementPoints}");
+            }
+            if (GetEffectiveDamageResistance().Where(x => x.Value != 1).Count() > 0)
+            {
+                Dictionary<DamageType, double> resistances = GetEffectiveDamageResistance().Where(x => x.Value != 1.0).ToDictionary(x => x.Key, x => x.Value);
+                stringBuilder.Append($"Damage resistances: ");
+
+                resistances = resistances.ToDictionary(x => x.Key, x => -(x.Value - 1));
+
+                if (resistances.Count == 1)
+                    stringBuilder.AppendLine($"{Math.Round(resistances.ElementAt(0).Value * 100, 2)}% {resistances.ElementAt(0).Key}");
+                else if (resistances.Count == 2)
+                    stringBuilder.AppendLine($"{Math.Round(resistances.ElementAt(0).Value * 100, 2)}% {resistances.ElementAt(0).Key} and {Math.Round(resistances.ElementAt(1).Value * 100, 2)}% {resistances.ElementAt(1).Key}");
+                else if (resistances.Count > 2)
+                {
+                    var allButLast = resistances
+                        .Take(resistances.Count - 1)
+                        .Select(di => $"{Math.Round(di.Value * 100, 2)}% {di.Key}");
+                    var last = $"{Math.Round(resistances.ElementAt(resistances.Count - 1).Value * 100, 2)}% {resistances.ElementAt(resistances.Count - 1).Key}";
+
+                    stringBuilder.AppendLine($"{string.Join(", ", allButLast)} and {last}");
+                }
             }
             stringBuilder.AppendLine($"Efective Movement: {EffectiveMovementPoints}");
             return stringBuilder.ToString();
         }
 
         public int RollInitiative(RollType rollType = RollType.Normal) {
-            return DiceUtils.Roll(Dice.d20, rollType) + GetInitiative();
+            return DiceUtils.Roll(Dice.d20, rollType) + GetInitiativeModifier();
         }
 
         public static string DisplayName { get; private set; }
 
         public string GetToolTipText() {
-            return $"{Name}\n{CurrentHp}/{MaxHp}HP ({Math.Round((double)CurrentHp / MaxHp, 2)*100}%)";
+            return $"<size=125%><b>{Name}</b></size>\n{CurrentHp}/{MaxHp}HP ({Math.Round((double)CurrentHp / MaxHp, 2)*100}%)";
         }
 
         public int GetSaveDC(SavingThrow savingThrow) {
@@ -497,6 +565,15 @@ namespace Iterum.models.interfaces
 
         public int GetSkillModifier(Skill skill, bool original = false) {
             return ModifierManager.GetAttribute(skill.Attribute, original) + ModifierManager.GetAttribute(skill.Stat.Attribute, original) + ProficiencyManager.GetSkillProficiencyBonus(skill);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null) return false;
+            if (obj is BaseCreature creature && creature.ID == ID) { 
+                return true;
+            }
+            return false;
         }
     }
 }

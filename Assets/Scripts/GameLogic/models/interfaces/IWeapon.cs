@@ -1,5 +1,6 @@
 using Assets.Scripts.GameLogic.models.actions;
 using Assets.Scripts.GameLogic.models.enums;
+using Assets.Scripts.GameLogic.models.interfaces;
 using Assets.Scripts.GameLogic.models.items;
 using Iterum.models.enums;
 using System;
@@ -8,16 +9,14 @@ using System.Linq;
 
 namespace Iterum.models.interfaces
 {
-    public interface IWeapon : ITargetable, IEquipment
+    public interface IWeapon : ITargetable, IEquipment, ITooltipTarget
     {
         IList<DamageInfo> DamageInfos { get; }
         int ReachModifier { get; }
         IList<WeaponTrait> WeaponTraits { get; }
         WeaponType WeaponType { get; }
-        IList<BaseAction> WeaponActions { get; }
         WeaponSlotDetails WeaponSlotDetails { get; set; }
         BaseCreature Creature { get; set; }
-
         int EvasionRatingBonus 
         {
             get => 0;
@@ -30,11 +29,6 @@ namespace Iterum.models.interfaces
                 return TargetType.Weapon;
             } 
         }
-
-        IList<BaseAction> IEquipment.Actions =>
-            WeaponActions
-                .Concat(WeaponTraits.SelectMany(trait => trait.Actions))
-                .ToList();
 
         string GetDamageInfoString();
     }

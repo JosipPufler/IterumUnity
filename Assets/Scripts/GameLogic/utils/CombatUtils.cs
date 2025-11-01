@@ -39,37 +39,58 @@ namespace Assets.Scripts.GameLogic.utils
 
         public static void ForceSavingThrowInAoe(BaseCreature source, GridCoordinate point, int radius, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
         {
+            Debug.Log($"[AOE SavingThrow] {source.Name} is forcing a {savingThrow.SaveStat} saving throw on all creatures within radius {radius} of {point}.");
+
             IEnumerable<BaseCreature> targets = CampaignGridLayout.Instance.GetTokensInRing(point, 0, radius).Select(x => x.creature);
+            int count = 0;
             foreach (BaseCreature target in targets)
             {
+                if (target == null)
+                {
+                    Debug.LogWarning("[AOE SavingThrow] Found null creature in target list. Skipping.");
+                    continue;
+                }
+
+                Debug.Log($"[AOE SavingThrow] Targeting {target.Name} at position {target.CurrentPosition}.");
                 ForceSavingThrow(source, target, savingThrow, actionPackage, actionResultBuilder);
+                count++;
             }
         }
 
-        public static void Attack(BaseCreature source, BaseCreature target, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder) {
+        public static bool Attack(BaseCreature source, BaseCreature target, AttackType attackType, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder) {
             int rollResult = DiceUtils.Roll(Dice.d20);
-            int attackRollResult = rollResult + source.ModifierManager.GetAttackModifier(attackType);
-            if (attackRollResult > target.EvasionRating)
+            int attackRollResult = rollResult + source.GetAttackModifier(attackType);
+            if (attackRollResult >= target.EvasionRating)
             {
                 actionResultBuilder.AddMessage($"{source.Name} hit {target.Name} with a {attackType.Name} ({attackRollResult} vs {target.EvasionRating})");
                 ApplyDamageAndModifiers(source, target, actionPackage.DamageOnSuccess, actionPackage.ModifiersOnSuccess, actionResultBuilder, attackType);
+                return true;
             }
             else
             {
                 actionResultBuilder.AddMessage($"{source.Name} missed {target.Name} with a {attackType.Name} ({attackRollResult} vs {target.EvasionRating})");
                 ApplyDamageAndModifiers(source, target, actionPackage.DamageOnFail, actionPackage.ModifiersOnFail, actionResultBuilder, attackType);
+                return false;
             }
         }
 
-        public static void ForceSavingThrow(BaseCreature source, BaseCreature target, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
+        public static bool ForceSavingThrow(BaseCreature source, BaseCreature target, SavingThrow savingThrow, ActionPackage actionPackage, ActionResultBuilder actionResultBuilder)
         {
-            if (source.GetSaveDC(savingThrow) > target.SavingThrow(savingThrow.SaveStat, RollType.Normal))
+            float dc = source.GetSaveDC(savingThrow);
+            float roll = target.SavingThrow(savingThrow.SaveStat, RollType.Normal);
+            Debug.Log($"[SavingThrow] {target.Name} is making a {savingThrow.SaveStat} saving throw against {source.Name}'s DC {dc}. Rolled: {roll}");
+
+            if (dc > roll)
             {
+                actionResultBuilder.AddMessage($"{target.Name} failed a {savingThrow.SaveStat.Name} save from {source.Name} ({roll} vs {dc})");
                 ApplyDamageAndModifiers(source, target, actionPackage.DamageOnSuccess, actionPackage.ModifiersOnSuccess, actionResultBuilder);
+                return true;
             }
             else
             {
+                actionResultBuilder.AddMessage($"{target.Name} succeeded a {savingThrow.SaveStat.Name} save from {source.Name} ({roll} vs {dc})");
                 ApplyDamageAndModifiers(source, target, actionPackage.DamageOnFail, actionPackage.ModifiersOnFail, actionResultBuilder);
+                return false;
             }
         }
 
@@ -107,8 +128,7 @@ namespace Assets.Scripts.GameLogic.utils
             maxDamageResult.Amount += source.GetAttributeModifier(Attribute.GlobalDamage);
             if (attackType != null)
                 maxDamageResult.Amount += source.ModifierManager.GetAttackDamageModifier(attackType);
-            int damage = target.TakeDamage(damageResults);
-            actionResultBuilder.AmountDamaged(target, damageResults);
+            actionResultBuilder.AmountDamaged(target, target.TakeDamage(damageResults));
         }
     }
 }

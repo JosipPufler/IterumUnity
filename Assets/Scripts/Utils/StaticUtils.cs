@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System;
 using Iterum.models.interfaces;
+using Assets.Scripts.GameLogic.models.creatures;
 
 namespace Assets.Scripts.Utils
 {
@@ -21,8 +22,8 @@ namespace Assets.Scripts.Utils
 
         private static string GetProperty(Type type, string propName)
         {
-            if (!typeof(BaseCreature).IsAssignableFrom(type))
-                throw new ArgumentException($"Type '{type.FullName}' must inherit from BaseCreature");
+            if (!typeof(BaseCreature).IsAssignableFrom(type) && !typeof(BaseClass).IsAssignableFrom(type))
+                throw new ArgumentException($"Type '{type.FullName}' must inherit a supported class");
 
             var prop = type.GetProperty(propName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             if (prop != null)

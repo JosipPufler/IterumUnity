@@ -37,7 +37,7 @@ namespace Assets.Scripts.ActionMaker
         public void Load(KeyValuePair<Attribute, int> modifier) {
             Init();
             attributeDropdown.value = Enum.GetNames(typeof(Attribute)).ToList().IndexOf(modifier.Key.ToString());
-            inputField.text = modifier.Key.ToString();
+            inputField.text = modifier.Value.ToString();
         }
     }
 }

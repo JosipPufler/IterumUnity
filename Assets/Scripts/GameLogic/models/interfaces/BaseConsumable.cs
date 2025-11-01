@@ -1,9 +1,9 @@
-﻿using Iterum.models;
-using Iterum.models.actions;
+﻿using Assets.Scripts.GameLogic.models.actions;
+using Iterum.models;
 using Iterum.models.interfaces;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace Assets.Scripts.GameLogic.models.interfaces
 {
@@ -14,6 +14,16 @@ namespace Assets.Scripts.GameLogic.models.interfaces
             Initialize();
         }
 
+        public BaseConsumable(BaseConsumable consumable)
+        {
+            ConsumeAction = consumable.ConsumeAction;
+            Weight = consumable.Weight;
+            Name = consumable.Name;
+            Stackable = consumable.Stackable;
+            Description = consumable.Description;
+            Initialize();
+        }
+
         [OnDeserialized]
         protected void OnDeserialized(StreamingContext context)
         {
@@ -21,9 +31,8 @@ namespace Assets.Scripts.GameLogic.models.interfaces
         }
 
         public virtual void Initialize(){}
-
-        [JsonIgnore]
-        public virtual Consume ConsumeAction { get; set; }
+        
+        public virtual BaseAction ConsumeAction { get; set; }
         public virtual ActionResult Consume(List<BaseItem> source, ActionInfo actionInfo)
         {
             if (source.Contains(this))
@@ -33,6 +42,13 @@ namespace Assets.Scripts.GameLogic.models.interfaces
                 return actionResult;
             }
             return null;
+        }
+
+        public override string GetTooltipText()
+        {
+            StringBuilder stringBuilder = new(base.GetTooltipText());
+            stringBuilder.AppendLine(ConsumeAction.ToString());
+            return stringBuilder.ToString();
         }
     }
 }

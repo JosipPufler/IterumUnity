@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Assets.Scripts.Utils.Managers;
 using Iterum.Scripts.Utils;
@@ -51,7 +52,7 @@ namespace Assets.Scripts.MainMenu
 
         public void OpenFileDialogAndUpload()
         {
-            string[] paths = StandaloneFileBrowser.OpenFilePanel("Select an Image", "", new[] {
+            string[] paths = StandaloneFileBrowser.OpenFilePanel("Select an Image", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), new[] {
                 new ExtensionFilter("Image Files", "png", "jpg", "jpeg")
             }, false);
 

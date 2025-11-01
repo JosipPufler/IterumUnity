@@ -1,8 +1,12 @@
 ﻿using Assets.Scripts.Campaign;
 using Assets.Scripts.Utils.converters;
+using Iterum.DTOs;
+using Iterum.Scripts.UI;
+using Iterum.Scripts.Utils;
 using Mirror;
 using System;
 using System.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Assets.Scripts.Network
@@ -17,10 +21,18 @@ namespace Assets.Scripts.Network
 
         public override void Awake()
         {
-            var args = Environment.GetCommandLineArgs();
+            string[] args = Environment.GetCommandLineArgs();
+            string adminUsername = null;
+            string adminPassword = null;
+
+            if (GameManager.Instance == null)
+            {
+                this.AddComponent<GameManager>();
+            }
 
             _telepathy = transport as TelepathyTransport;
-
+            _telepathy.clientMaxMessageSize = 65535;
+            _telepathy.serverMaxMessageSize = 65535;
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "-port" && i + 1 < args.Length)
@@ -30,6 +42,24 @@ namespace Assets.Scripts.Network
                         _telepathy.port = p;
                     }
                 }
+
+                if (args[i] == "-adminUsername" && i + 1 < args.Length)
+                {
+                    adminUsername = args[i + 1];
+                }
+
+                if (args[i] == "-adminPassword" && i + 1 < args.Length)
+                {
+                    adminPassword = args[i + 1];
+                }
+            }
+
+            if (adminUsername != null && adminPassword != null) {
+                UserManager.Instance.Login(new LoginForm(adminUsername, adminPassword), (loginResponse) => Debug.Log(loginResponse.JwtToken), (e) => Debug.Log(e));
+            }
+            else
+            {
+                Debug.Log("Something wrong with admin credentials");
             }
 
             if (instance != null && instance != this)
@@ -70,14 +100,13 @@ namespace Assets.Scripts.Network
         {
             Debug.Log("[Server] Waiting for CampaignPlayers to initialize...");
 
-            yield return null; // Wait one frame to allow scene load
+            yield return null;
 
             foreach (var roomPlayer in roomSlots)
             {
                 var customRoomPlayer = roomPlayer as CustomRoomPlayer;
                 var conn = customRoomPlayer.connectionToClient;
 
-                // Wait for the new identity to be assigned
                 float timeout = 3f;
                 float timer = 0f;
                 while ((conn.identity == null || conn.identity.GetComponent<CampaignPlayer>() == null) && timer < timeout)
@@ -92,8 +121,7 @@ namespace Assets.Scripts.Network
                     continue;
                 }
 
-                var campaignPlayer = conn.identity.GetComponent<CampaignPlayer>();
-                if (campaignPlayer != null)
+                if (conn.identity.TryGetComponent<CampaignPlayer>(out var campaignPlayer))
                 {
                     campaignPlayer.playerName = customRoomPlayer.playerName;
                     campaignPlayer.sessionId = customRoomPlayer.sessionCode;

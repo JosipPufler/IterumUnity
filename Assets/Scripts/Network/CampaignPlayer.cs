@@ -8,6 +8,7 @@ using Iterum.models.interfaces;
 using Mirror;
 using Newtonsoft.Json;
 using System.Collections;
+using System.Threading;
 using UnityEngine;
 
 namespace Assets.Scripts.Campaign
@@ -133,16 +134,16 @@ namespace Assets.Scripts.Campaign
         public void CmdRequestStartCombat()
         {
             if (!isServer) return;
-
+            Debug.Log("Combat");
             var combatants = GeneralManager.Instance.layoutManager.GetCombatants();
 
             TurnOrderManager.Instance.StartCombat(combatants);
         }
 
         [Command]
-        public void CmdSendChatLinkEntry(string label, string type)
+        public void CmdSendChatLinkEntry(string label, string path, string type)
         {
-            RpcReceiveChatLinkEntry(label, type);
+            RpcReceiveChatLinkEntry(label, path, type);
         }
 
         [Command]
@@ -163,10 +164,10 @@ namespace Assets.Scripts.Campaign
         }
 
         [ClientRpc]
-        void RpcReceiveChatLinkEntry(string label, string type)
+        void RpcReceiveChatLinkEntry(string label, string path, string type)
         {
             var chatManager = FindFirstObjectByType<CampaignHostPanelManager>();
-            chatManager.AddChatLinkEntry(label, type);
+            chatManager.AddChatLinkEntry(label, path, type);
         }
 
         [Command(requiresAuthority = false)]
@@ -194,9 +195,10 @@ namespace Assets.Scripts.Campaign
             if (CreatureFactory.builtIns.ContainsKey(creatureType) &&
                 CreatureFactory.TryCreate(creatureType, out BaseCreature creature))
             {
+                creature.CurrentPosition = position;
                 ct.creature = creature;
                 ct.creature.Spawn();
-                ct.creatureJson = JsonConvert.SerializeObject(creature, JsonSerializerSettingsProvider.GetSettings());
+                ct.UpdateCreatureJson();
                 ct.controllerName = player.playerName;
                 Debug.Log("[Server] Will assign creature: " + JsonConvert.SerializeObject(creature, JsonSerializerSettingsProvider.GetSettings()));
             }
@@ -234,12 +236,14 @@ namespace Assets.Scripts.Campaign
 
             if (!ConverterUtils.TryParseCharacter(characterDto.Data, out DownableCreature character))
                 return;
+            character.InitHelpers();
 
             character.GetCustomActions(() =>
             {
                 ct.creature = character;
-                ct.creature.CharacterId = 
-                ct.creatureJson = JsonConvert.SerializeObject(character, JsonSerializerSettingsProvider.GetSettings());
+                ct.creature.CurrentPosition = position;
+                ct.creature.CharacterId = characterDto.Id;
+                ct.UpdateCreatureJson();
                 ct.controllerName = player.playerName;
                 ct.team = team;
                 ct.position = position;

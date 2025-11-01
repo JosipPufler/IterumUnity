@@ -42,6 +42,12 @@ namespace Iterum.Scripts.Utils
         public static readonly string UpdateAction = $"{Actions}/update";
         public static string DeleteAction(string actionId) => $"{Actions}/delete/{actionId}";
 
+        public static readonly string Items = $"{Base}/item";
+        public static string ItemById(string id) => $"{Items}/{id}";
+        public static readonly string CreateItem = $"{Items}/save";
+        public static readonly string UpdateItem = $"{Items}/update";
+        public static string DeleteItem(string itemId) => $"{Items}/delete/{itemId}";
+
         public static readonly string Session = $"{Base}/session";
         public static readonly string CreateSession = $"{Session}/create";
         public static readonly string EndSession = $"{Session}/end";

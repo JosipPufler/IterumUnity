@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class VerticalResizeHandler : MonoBehaviour, IDragHandler
 {
@@ -18,5 +19,6 @@ public class VerticalResizeHandler : MonoBehaviour, IDragHandler
         }
 
         panelToResize.sizeDelta = newSize;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(panelToResize);
     }
 }

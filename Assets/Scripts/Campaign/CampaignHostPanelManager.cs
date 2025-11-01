@@ -190,7 +190,7 @@ public class CampaignHostPanelManager : MonoBehaviour
 
             entry.transform.Find("btnShare").GetComponent<Button>()
             .onClick.AddListener(() => {
-                campaignPlayer.CmdSendChatLinkEntry(image, "image");
+                campaignPlayer.CmdSendChatLinkEntry(image, $"{SessionData.Username}/images/{image}", "image");
             });
 
             entry.transform.Find("btnPreview").GetComponent<Button>()
@@ -236,7 +236,7 @@ public class CampaignHostPanelManager : MonoBehaviour
 
             entry.transform.Find("btnShare").GetComponent<Button>()
             .onClick.AddListener(() => {
-                campaignPlayer.CmdSendChatLinkEntry(journal, "journal");
+                campaignPlayer.CmdSendChatLinkEntry(journal, $"{SessionData.Username}/journal/{journal}.txt", "journal");
             });
 
             entry.transform.Find("btnPreview").GetComponent<Button>()
@@ -249,7 +249,7 @@ public class CampaignHostPanelManager : MonoBehaviour
     
     private void PreviewJournal(JournalDto JournalDto)
     {
-        journalPreviewContent.text = JournalDto.Content;
+        journalPreviewContent.text = MarkdownService.Convert(JournalDto.Content);
         journalPreviewPanel.SetActive(true);
     }
 
@@ -261,7 +261,7 @@ public class CampaignHostPanelManager : MonoBehaviour
         Debug.Log(error);
     }
 
-    public void AddChatLinkEntry(string label, string type)
+    public void AddChatLinkEntry(string label, string path, string type)
     {
         var chatEntry = Instantiate(chatLinkPrefab, chatContent.transform);
         chatEntry.transform.Find("Name").GetComponent<TMP_Text>().text = label;
@@ -269,13 +269,13 @@ public class CampaignHostPanelManager : MonoBehaviour
         if (type == "image")
         {
             chatEntry.GetComponent<Button>().onClick.AddListener(() => {
-                AssetManager.Instance.GetImage(label, PreviewImage, OnError);
+                AssetManager.Instance.PreviewImage(path, PreviewImage, OnError);
             });
         }
         else if (type == "journal")
         {
             chatEntry.GetComponent<Button>().onClick.AddListener(() => {
-                JournalManager.Instance.PreviewJournal($"{PlayerPrefs.GetString("username")}/journal/{label}.txt", PreviewJournal, OnError);
+                JournalManager.Instance.PreviewJournal(path, PreviewJournal, OnError);
             });
         }
     }

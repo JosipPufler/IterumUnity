@@ -4,6 +4,7 @@ using Iterum.models.enums;
 using Iterum.models.interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -37,24 +38,24 @@ namespace Iterum.models.items
             }
         }
 
-        public int TakeDamage(IEnumerable<DamageResult> damage)
+        public List<DamageResult> TakeDamage(IEnumerable<DamageResult> damage)
         {
             IDictionary<DamageType, double> resistances = creature.Race.GetEffectiveDamageResistances();
             IDictionary<DamageCategory, double> categoryResistances = creature.Race.GetEffectiveDamageCategoryResistances();
-            int totalDamageTaken = 0;
+            Dictionary<DamageType, int> totalDamageTaken = new();
             foreach (DamageResult damageResult in damage)
             {
                 int damageTaken = (int)Math.Ceiling(damageResult.Amount
                         * (categoryResistances.TryGetValue(damageResult.DamageType.DamageCategory, out double categoryValue) ? categoryValue : 1)
                         * (resistances.TryGetValue(damageResult.DamageType, out double typeValue) ? typeValue : 1));
-                totalDamageTaken += damageTaken;
+                totalDamageTaken[damageResult.DamageType] = totalDamageTaken.GetValueOrDefault(damageResult.DamageType) + damageTaken;
                 CurrentHp -= damageTaken;
                 if (CurrentHp <= 0)
                 {
                     Destroy();
                 }
             }
-            return totalDamageTaken;
+            return totalDamageTaken.Select(x => new DamageResult(x.Value, x.Key)).ToList();
         }
 
         #nullable enable

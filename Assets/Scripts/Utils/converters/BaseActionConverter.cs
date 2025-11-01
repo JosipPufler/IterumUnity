@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Diagnostics;
 
 namespace Assets.Scripts.Utils.converters
 {
@@ -13,6 +14,7 @@ namespace Assets.Scripts.Utils.converters
 
             var noLoopSerializer = new JsonSerializer
             {
+                TypeNameHandling = TypeNameHandling.Auto,
                 ContractResolver = serializer.ContractResolver,
                 ObjectCreationHandling = serializer.ObjectCreationHandling,
                 MissingMemberHandling = serializer.MissingMemberHandling,
@@ -20,7 +22,7 @@ namespace Assets.Scripts.Utils.converters
                 DefaultValueHandling = serializer.DefaultValueHandling
             };
 
-            var consumable = (BaseAction)jObject.ToObject(objectType, noLoopSerializer);
+            var consumable = (BaseAction)jObject.ToObject(typeof(BaseAction), noLoopSerializer);
 
             consumable?.Initialize();
 

@@ -1,4 +1,5 @@
 ﻿using Assets.Scripts.Network;
+using Assets.Scripts.Utils;
 using Iterum.Scripts.UI;
 using Mirror;
 using TMPro;
@@ -15,7 +16,7 @@ namespace Assets.Scripts.MainMenu
 
         private void Start()
         {
-            if (GameManager.Instance.Session.Host != PlayerPrefs.GetString("username")) { 
+            if (GameManager.Instance.Session.Host != SessionData.Username) { 
                 btnStart.gameObject.SetActive(false);
             }
             else

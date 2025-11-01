@@ -3,16 +3,32 @@ using Assets.Scripts.Utils.converters;
 using Iterum.models;
 using Iterum.models.enums;
 using Iterum.models.interfaces;
+using Iterum.utils;
+using Mirror;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Unity.VisualScripting;
+using UnityEngine;
 
 namespace Assets.Scripts.GameLogic.models.actions
 {
     public class BaseAction : IAction
     {
+        public BaseAction() { }
+
+        public BaseAction(BaseAction baseAction) { 
+            ID = Guid.NewGuid().ToString();
+            Name = baseAction.Name;
+            Description = baseAction.Description;
+            ApCost = baseAction.ApCost;
+            MpCost = baseAction.MpCost;
+            TargetTypes.AddRange(baseAction.TargetTypes);
+            Action = baseAction.Action;
+        }
+
         [JsonProperty]
         public virtual string ID { get; set; } = Guid.NewGuid().ToString();
         public virtual string Name { get; set; }
@@ -25,6 +41,17 @@ namespace Assets.Scripts.GameLogic.models.actions
         public virtual Func<ActionInfo, ActionResult> Action { get; set; }
 
         public virtual void Initialize() { }
+        public virtual BaseAction Clone() { 
+            return new BaseAction() {
+                ID = Guid.NewGuid().ToString(),
+                Name = Name,
+                Description = Description,
+                ApCost = ApCost,
+                MpCost = MpCost,
+                TargetTypes = TargetTypes,
+                Action = Action
+            };
+        }
 
         public virtual int GetNumberOFTargets(IDictionary<TargetData, int> targetTypes)
         {
@@ -69,9 +96,10 @@ namespace Assets.Scripts.GameLogic.models.actions
             {
                 actionInfo.OriginCreature.CurrentAp -= ApCost;
                 actionInfo.OriginCreature.CurrentMp -= MpCost;
+                Debug.Log($"[ExecuteAction] {GetType().Name} | Action={(Action == null ? "null" : "set")}");
                 return Action.Invoke(actionInfo);
             }
-            return null;
+            return ActionResultBuilder.Start(actionInfo.OriginCreature).Fail().Build();
         }
 
         public virtual string GetCostString()
@@ -85,10 +113,15 @@ namespace Assets.Scripts.GameLogic.models.actions
             return stringBuilder.ToString();
         }
 
-        public virtual string GetLongDescription()
+        public override string ToString()
+        {
+            return $"<b>{Name}</b>: {Description}";
+        }
+
+        public string GetTooltipText()
         {
             StringBuilder sb = new();
-            sb.AppendLine($"<size=200%><b>{Name}</b></size>");
+            sb.AppendLine($"<size=175%><b>{Name}</b></size>");
             sb.AppendLine($"<size=150%>{GetCostString()}</size>");
             sb.AppendLine(Description);
             return sb.ToString();

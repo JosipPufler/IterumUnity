@@ -28,6 +28,7 @@ namespace Iterum.Scripts.UI
                 SessionManager.EnsureExists();
                 MapManager.EnsureExists();
                 ActionManager.EnsureExists();
+                ItemManager.EnsureExists();
                 UserManager.EnsureExists();
                 JournalManager.EnsureExists();
                 CharacterManager.EnsureExists();

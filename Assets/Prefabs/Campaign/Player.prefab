@@ -91,6 +91,7 @@ MonoBehaviour:
   targetPrefab: {fileID: 5797194773876988792, guid: 0960d9bef12dc1b44b338dee67146b7b, type: 3}
   content: {fileID: 0}
   userChat: {fileID: 0}
+  LookingForTargets: 0
 --- !u!1001 &4805380070044244486
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -99,18 +100,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1021933276721056826}
     m_Modifications:
-    - target: {fileID: 3337395761520963028, guid: b3badbf94b6ab974e8b9f27758778f7d, type: 3}
-      propertyPath: fastSpeed
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 3337395761520963028, guid: b3badbf94b6ab974e8b9f27758778f7d, type: 3}
-      propertyPath: normalSpeed
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 3337395761520963028, guid: b3badbf94b6ab974e8b9f27758778f7d, type: 3}
-      propertyPath: rotationSpeed
-      value: 0.25
-      objectReference: {fileID: 0}
     - target: {fileID: 3411884366997381670, guid: b3badbf94b6ab974e8b9f27758778f7d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 750

@@ -3,7 +3,6 @@ using Assets.Scripts.Campaign;
 using Assets.Scripts.GameLogic.models.enums;
 using Assets.Scripts.GameLogic.models.target;
 using Assets.Scripts.Map;
-using Assets.Scripts.Network;
 using Iterum.DTOs;
 using Iterum.Scripts.UI;
 using Mirror;
@@ -23,7 +22,7 @@ public class CampaignGridLayout : HexGridLayout
         if (_instance == null)
             _instance = this;
         else
-            Destroy(gameObject); // Optional: Enforce singleton
+            Destroy(gameObject);
     }
 
     private const string TokenTag = "Token";
@@ -32,7 +31,6 @@ public class CampaignGridLayout : HexGridLayout
     public bool MapLoaded { get; set; } = false;
 
     public GeneralManager manager;
-    //public CampaignActionManager actionManager;
     public GameObject hexPrefab;
 
     [Header("Token")]
@@ -42,8 +40,6 @@ public class CampaignGridLayout : HexGridLayout
     public Material enemyMaterial;
     public Material playerMaterial;
     public Material deadMaterial;
-
-    private readonly Dictionary<Team, List<CharacterToken>> creatures = new();
 
     private static readonly Dictionary<GridCoordinate, CharacterToken> characters = new();
     private CharacterToken selectedToken;
@@ -55,14 +51,6 @@ public class CampaignGridLayout : HexGridLayout
 
     public static List<HexRenderer> highlightedRenderers = new();
     public static List<CharacterToken> highlightedCharacters = new();
-
-    private void Start()
-    {
-        foreach (Team team in Enum.GetValues(typeof(Team)))
-        {
-            creatures[team] = new List<CharacterToken>();
-        }
-    }
 
     private void Update()
     {
@@ -84,8 +72,6 @@ public class CampaignGridLayout : HexGridLayout
                         {
                             if (pair.Value == hitObject)
                             {
-                                Debug.Log($"{pair.Key.x} {pair.Key.y} {pair.Key.z}");
-
                                 if (CampaignActionManager.Instance.LookingForTargets && IsWithinRange(GetTokenCoordinates(CampaignActionManager.Instance.CurrentToken), pair.Key, CampaignActionManager.Instance.CurrentTargetData.MinDistance, CampaignActionManager.Instance.CurrentTargetData.MaxDistance)) {
                                     CampaignActionManager.Instance.SubmitHexTarget(new TargetDataSubmissionHex(CampaignActionManager.Instance.CurrentTargetData, pair.Key));
                                 }
@@ -179,6 +165,8 @@ public class CampaignGridLayout : HexGridLayout
         if ((Input.GetMouseButtonDown(1) && !EventSystem.current.IsPointerOverGameObject()) || Input.GetKeyDown(KeyCode.Escape))
         {
             GameManager.Instance.SelectedCreature = null;
+            GameManager.Instance.SelectedCharacter = null;
+            GameManager.Instance.SelectedAction = null;
             selectedToken = null;
             ResetMovement();
         }
@@ -239,86 +227,13 @@ public class CampaignGridLayout : HexGridLayout
 
         characters[hexKey] = token;
 
-        if (!creatures.TryGetValue(token.team, out var teamList))
-        {
-            teamList = new List<CharacterToken>();
-            creatures[token.team] = teamList;
-        }
-
-        teamList.Add(token);
         //manager.UpdateInitiative(token);
     }
 
     public void UnregisterToken(GridCoordinate hexKey, CharacterToken token)
     {
         characters.Remove(hexKey);
-
-        if (creatures.TryGetValue(token.team, out var list))
-        {
-            list.Remove(token);
-            if (list.Count == 0)
-                creatures.Remove(token.team);
-        }
     }
-
-    /*private void TryAddToken(Vector3Int aboveKey)
-    {
-        if (characters.TryGetValue(aboveKey, out CharacterToken _))
-        {
-            return;
-        }
-
-        if (GameManager.Instance.SelectedCreature == null)
-        {
-            return;
-        }
-        Material currentMaterial = null;
-
-        var token = Instantiate(tokenPrefab, transform);
-        CharacterToken characterToken = token.GetComponent<CharacterToken>();
-        creatures[GameManager.Instance.Team].Add(characterToken);
-        switch (GameManager.Instance.Team)
-        {
-            case Team.PLAYER:
-                currentMaterial = playerMaterial;
-                characterToken.outlineColor = Color.blue;
-                break;
-            case Team.ALLY:
-                currentMaterial = allyMaterial;
-                characterToken.outlineColor = Color.green;
-                break;
-            case Team.ENEMY:
-                currentMaterial = enemyMaterial;
-                characterToken.outlineColor = Color.red;
-                break;
-            case Team.NEUTRAL:
-                currentMaterial = neutralMaterial;
-                characterToken.outlineColor = Color.white;
-                break;
-            case Team.DEAD:
-                currentMaterial = deadMaterial;
-                characterToken.outlineColor = Color.white;
-                break;
-        }
-        token.transform.Find("body").GetComponent<MeshRenderer>().material = currentMaterial;
-        token.transform.localScale = new Vector3(1.6f, 1f, 1.6f);
-        Vector3 vector3 = GetPositionForTokenInRealWorld(aboveKey, token);
-        token.transform.position = vector3;
-
-        token.tag = "Token";
-
-        if (!token.TryGetComponent<Collider>(out _))
-        {
-            BoxCollider boxCollider = token.AddComponent<BoxCollider>();
-            boxCollider.size = new Vector3(100, 30, 100);
-        }
-
-        characterToken.creature = GameManager.Instance.SelectedCreature;
-        characterToken.normalBodyMaterial = currentMaterial;
-        manager.UpdateInitiative(characterToken);
-
-        characters[aboveKey] = characterToken;
-    }*/
 
     public Vector3 GetPositionForTokenInRealWorld(GridCoordinate aboveKey, GameObject token)
     {
@@ -368,7 +283,6 @@ public class CampaignGridLayout : HexGridLayout
 
             if (NetworkServer.active)
             {
-                Debug.Log($"Spawning tile {key.x}, {key.y}, {key.z}");
                 NetworkServer.Spawn(tile);
             }
         }
@@ -388,24 +302,7 @@ public class CampaignGridLayout : HexGridLayout
     }
 
     public List<CharacterToken> GetCombatants() {
-        List<CharacterToken> allCreatures = new();
-        foreach (Team team in creatures.Keys)
-        {
-            allCreatures.AddRange(creatures[team].Where(x => !x.creature.IsDead));
-        }
-        return allCreatures;
-    }
-
-    public Team GetCreatureTeam(string creatureId)
-    {
-        foreach (Team team in creatures.Keys)
-        {
-            if (creatures[team].Any(x => x.creature.ID == creatureId))
-            {
-                return team;
-            }
-        }
-        return Team.DEAD;
+        return characters.Values.Where(x => !x.IsDead).ToList();
     }
 
     public void RotateTokenToward(CharacterToken token, GridCoordinate to)
@@ -422,9 +319,10 @@ public class CampaignGridLayout : HexGridLayout
 
     public IEnumerable<CharacterToken> GetTokensInRing(GridCoordinate center, int minDist, int maxDist)
     {
+        Debug.Log($"{characters.Count}");
         foreach (var kv in characters)
         {
-            int distance = CubeDistance(kv.Key, center);
+            int distance = CubeDistance(center, kv.Value.position);
             if (distance >= minDist && distance <= maxDist)
                 yield return kv.Value;
         }

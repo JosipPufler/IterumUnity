@@ -41,5 +41,10 @@ namespace Iterum.models.enums
         {
             return GetDamageTypes().FirstOrDefault(x => x.Name == name);
         }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

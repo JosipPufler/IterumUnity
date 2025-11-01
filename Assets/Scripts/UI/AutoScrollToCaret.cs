@@ -8,7 +8,7 @@ namespace Iterum.Scripts.UI
     public class ScrollToCaretInParent : MonoBehaviour
     {
         public ScrollRect parentScrollRect;
-        public float caretOffset = 30f;
+        public float caretOffset = 0;
 
         private TMP_InputField input;
 

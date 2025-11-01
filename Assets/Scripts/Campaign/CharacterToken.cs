@@ -7,6 +7,7 @@ using Iterum.models.interfaces;
 using Mirror;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using Time = UnityEngine.Time;
 
@@ -34,7 +35,8 @@ public class CharacterToken : NetworkBehaviour
     [Header("Data")]
     //[SyncVar(hook = nameof(OnCreatureChanged))] 
     public BaseCreature creature;
-    [SyncVar(hook = nameof(OnCreatureJsonChanged))] public string creatureJson = "";
+    [SyncVar(hook = nameof(OnCreatureJsonChanged))] 
+    public string creatureJson = "";
 
     [SyncVar] 
     public string controllerName;
@@ -50,7 +52,6 @@ public class CharacterToken : NetworkBehaviour
     private Quaternion syncedRotation;
 
     const string outlineColorProperty = "_OutlineColor";
-    ToolTipTrigger toolTipTrigger;
     MeshRenderer outlineRenderer;
     MaterialPropertyBlock propBlock;
 
@@ -151,6 +152,7 @@ public class CharacterToken : NetworkBehaviour
         CampaignGridLayout.Instance.RegisterToken(position, this);
         ApplyTeamStyle(team);
         InitVisuals();
+        ((BodyOutlineListener)transform.GetComponentInChildren(typeof(BodyOutlineListener))).enabled = false;
     }
 
     void TryInit()
@@ -172,8 +174,6 @@ public class CharacterToken : NetworkBehaviour
         SetOutlineColor(outlineColor);
         outlineRenderer.SetPropertyBlock(propBlock);
 
-        if (!toolTipTrigger && isClient)
-            toolTipTrigger = gameObject.AddComponent<ToolTipTrigger>();
         ApplyTeamStyle(team);
 
         if (isServer)
@@ -191,9 +191,6 @@ public class CharacterToken : NetworkBehaviour
         }
 
         IsDead = creature.IsDead;
-
-        if (isClient && toolTipTrigger != null && creature != null)
-            toolTipTrigger.tooltipText = creature.GetToolTipText();
 
         if (!isServer) return;
     
@@ -305,6 +302,8 @@ public class CharacterToken : NetworkBehaviour
             return;
         }
         creature.MovementPoints--;
+        position = new GridCoordinate(pos);
+        creature.CurrentPosition = position;
         actionQueue.Enqueue(new TokenAction { Type = TokenActionType.MOVE, TargetPos = pos });
         creatureJson = JsonConvert.SerializeObject(creature, JsonSerializerSettingsProvider.GetSettings());
     }
@@ -346,12 +345,7 @@ public class CharacterToken : NetworkBehaviour
 
         if (!string.IsNullOrWhiteSpace(newJson))
         {
-            if (ConverterUtils.TryParseCharacter(newJson, out DownableCreature character))
-            {
-                creature = character;
-                creature?.InitHelpers(default);
-            }
-            else if (ConverterUtils.TryParseCreature(newJson, out BaseCreature baseCreature))
+            if (ConverterUtils.TryParseCreature(newJson, out BaseCreature baseCreature))
             {
                 creature = baseCreature;
                 creature?.InitHelpers(default);
@@ -367,7 +361,16 @@ public class CharacterToken : NetworkBehaviour
                 InitVisuals();
                 initialized = true;
             }
+
+            if (isClient && CampaignMenuManager.currentCreature != null && CampaignMenuManager.currentCreature.netId == netId)
+            {
+                CampaignMenuManager.Instance.SetCreature(this);
+            }
         }
+    }
+
+    public void UpdateCreatureJson() {
+        creatureJson = JsonConvert.SerializeObject(creature, JsonSerializerSettingsProvider.GetSettings());
     }
 
     private void OnDestroy()

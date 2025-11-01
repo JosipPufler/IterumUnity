@@ -7,6 +7,7 @@ using Assets.Scripts.Utils;
 using Iterum.Scripts.UI;
 using Iterum.Scripts.Utils.Managers;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -28,12 +29,22 @@ namespace Assets.Scripts.ActionMaker
         public GameObject attackPrefab;
         public GameObject savingThrowData;
 
+        [Header("Error/info")]
+        public MainMenuNotifPanel MainMenuNotifPanel;
+
         private string currentId;
 
         private void Start()
         {
             if (GameManager.Instance.SelectedAction != null) {
-                LoadAction(GameManager.Instance.SelectedAction);
+                try
+                {
+                    LoadAction(GameManager.Instance.SelectedAction);
+                }
+                catch (Exception)
+                {
+                    MainMenuNotifPanel.SetErrorMessage("There was an error loading this action");
+                }
             }
             else
             {
@@ -55,6 +66,7 @@ namespace Assets.Scripts.ActionMaker
 
         private static void GoBack()
         {
+            GameManager.Instance.SelectedAction = null;
             SceneManager.LoadScene("MainMenu");
         }
 
@@ -81,20 +93,31 @@ namespace Assets.Scripts.ActionMaker
         }
 
         public void SaveAction() {
-            CustomBaseAction newAction = GetAction();
+            CustomBaseAction newAction;
+            try
+            {
+                 newAction = GetAction();
+            }
+            catch (Exception e)
+            {
+                MainMenuNotifPanel.SetErrorMessage(e.Message);
+                return;
+            }
+
             string serializedAction = JsonConvert.SerializeObject(newAction, JsonSerializerSettingsProvider.GetSettings());
 
             if (currentId == null)
             {
-                ActionManager.Instance.CreateAction(new ActionDto(newAction), (action) => OnCreate(action), (e) => Debug.Log(e));
+                ActionManager.Instance.CreateAction(new ActionDto(newAction), (action) => OnCreate(action), (e) => MainMenuNotifPanel.SetErrorMessage(e));
             }
             else
             {
-                ActionManager.Instance.UpdateAction(new ActionDto(newAction, currentId), null, (e) => Debug.Log(e));
+                ActionManager.Instance.UpdateAction(new ActionDto(newAction, currentId), null, (e) => MainMenuNotifPanel.SetErrorMessage(e));
             }
         }
 
-        private void OnCreate(ActionDto action) { 
+        private void OnCreate(ActionDto action) {
+            MainMenuNotifPanel.SetInfoMessage($"{action.Name} was successfully created!");
             currentId = action.Id;
         }
 

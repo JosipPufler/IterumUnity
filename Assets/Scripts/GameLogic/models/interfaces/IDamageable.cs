@@ -1,3 +1,4 @@
+using Iterum.models.enums;
 using System.Collections.Generic;
 
 namespace Iterum.models.interfaces
@@ -7,7 +8,7 @@ namespace Iterum.models.interfaces
         int CurrentHp { get; set; }
         int MaxHp { get; set; }
         int OriginalMaxHp { get; }
-        int TakeDamage(IEnumerable<DamageResult> damage);
+        List<DamageResult> TakeDamage(IEnumerable<DamageResult> damage);
         void Heal(int ammount) {
             if (ammount > MaxHp)
             {
